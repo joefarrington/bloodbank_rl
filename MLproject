@@ -1,0 +1,3 @@
+name: bloodbank_rl
+
+conda_env: environment.yaml
