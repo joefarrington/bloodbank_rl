@@ -133,3 +133,8 @@ dmypy.json
 
 # Notebooks for temporary working
 notebooks
+
+# Logfiles
+mlruns
+model_checkpoints
+hydra_output
