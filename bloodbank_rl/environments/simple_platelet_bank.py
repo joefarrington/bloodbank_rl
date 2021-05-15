@@ -110,21 +110,26 @@ class PlateletBankGym(gym.Env):
             zero_counts[i] = 0
         return Counter(zero_counts)
 
-    def _fill_prescription(self):
+    def _issue_units(self, n_units):
         # Fill order or raise a backorder
+        # Assume allocation policy is FIFO
 
-        if len(self.state["available_stock"].items) > 0:
+        while (len(self.state["available_stock"].items) >= n_units) and (n_units > 0):
             self.state["available_stock"].get()
-        else:
-            self.daily_backorders += 1
+            n_units -= 1
+
+        # Backorder any unfilled units requested
+        self.daily_backorders += n_units
 
     def _generate_demand(self):
         # Assume that demand is Poisson and therefore
         # wait between requests follows exponential distribution
 
+        # Assume all requests are for one unit
+
         while True:
 
-            self._fill_prescription()
+            self._issue_units(1)
 
             yield self.simpy_env.timeout(
                 self.np_rng.exponential(1 / self.daily_demand[self.state["weekday"]])
