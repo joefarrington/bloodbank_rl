@@ -88,8 +88,7 @@ class PlateletBankGym(gym.Env):
         return -cost
 
     def _create_initial_stock(self):
-        # Assume mean amount has been ordered and requested
-        # each previous day
+        # Large starting inventory - to consider
 
         self.state["available_stock"].items = [
             PlateletUnit(t)
