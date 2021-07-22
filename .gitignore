@@ -139,3 +139,6 @@ notebooks
 mlruns
 model_checkpoints
 hydra_output
+
+# Temporary working files
+archive
