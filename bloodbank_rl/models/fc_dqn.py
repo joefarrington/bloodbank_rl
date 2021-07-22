@@ -18,7 +18,8 @@ class FCDQN(nn.Module):
 
         if len(n_hidden) > 1:
             for i in range(1, len(n_hidden)):
-                layers.append(nn.Linear(n_hidden[i - 1], n_hidden[i]), nn.ReLU())
+                layers.append(nn.Linear(n_hidden[i - 1], n_hidden[i]))
+                layers.append(nn.ReLU())
         layers.append(nn.Linear(n_hidden[-1], n_actions))
 
         self.fc = nn.Sequential(*layers)
