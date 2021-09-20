@@ -6,11 +6,11 @@ import mpisppy.utils.sputils as sputils
 from mpisppy.opt.ef import ExtensiveForm
 
 from pathlib import Path
+import os
 import sys
 
-path_root = Path(__file__).parents[2]
+path_root = Path(os.path.abspath(__file__)).parents[2]
 sys.path.append(str(path_root))
-print(sys.path)
 
 from bloodbank_rl.environments.platelet_bankSR import PoissonDemandProviderSR
 import bloodbank_rl.pyomo_models.model_constructors_nonweekly as pyomo_mc
