@@ -5,6 +5,13 @@ import pyomo.environ as pyo
 import mpisppy.utils.sputils as sputils
 from mpisppy.opt.ef import ExtensiveForm
 
+from pathlib import Path
+import sys
+
+path_root = Path(__file__).parents[2]
+sys.path.append(str(path_root))
+print(sys.path)
+
 from bloodbank_rl.environments.platelet_bankSR import PoissonDemandProviderSR
 import bloodbank_rl.pyomo_models.model_constructors_nonweekly as pyomo_mc
 
@@ -27,11 +34,13 @@ def scenario_creator(scenario_name, n_scenarios, t_max, a_max):
 
 if __name__ == "__main__":
 
+    print("Optimization script started")
+
     t_max = 30
     a_max = 3
     n_scenarios = 5
 
-    options = {"solver": "gurobi_persistent"}
+    options = {"solver": "gurobi"}
     all_scenario_names = [
         f"{i+310}" for i in range(1, n_scenarios + 1)
     ]  # seed 5 used for example run in Excel, so add const
@@ -47,7 +56,10 @@ if __name__ == "__main__":
         },
     )
 
+    print("Solving extensive form")
     results = ef.solve_extensive_form()
+
+    print("Post-processing results")
     objval = ef.get_objective_value()
 
     results_list = []
@@ -81,6 +93,8 @@ if __name__ == "__main__":
         print(f"Wastage cost: {model.wastage_cost()}")
         print(f"Shortage cost: {model.shortage_cost()}")
         print("")
+
+    print("Saving results")
 
     for i, x in enumerate(results_list):
         pd.DataFrame(x).to_csv(f"scenario_{i}_output.csv")
