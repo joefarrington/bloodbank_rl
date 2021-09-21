@@ -1,8 +1,6 @@
 hydra:
   run:
-    dir: .
-  output_subdir: ./hydra_output/${now:%Y-%m-%d}/${now:%H-%M-%S}
-hydra_logdir: ${hydra:output_subdir}
+    dir: ./hydra_output/${now:%Y-%m-%d}/${now:%H-%M-%S}
 t_max: 30
 a_max: 3
 n_scenarios: 5

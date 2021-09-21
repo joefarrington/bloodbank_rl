@@ -23,7 +23,6 @@ def main(cfg):
     t_max = cfg.t_max
     a_max = cfg.a_max
     n_scenarios = cfg.n_scenarios
-    results_filepath_string = cfg.hydra_logdir
     model_constructor = globals()[cfg.model_constructor]
     demand_provider = globals()[cfg.demand_provider]
 
@@ -36,8 +35,8 @@ def main(cfg):
     )
     model_runner.solve_program()
     model_runner.construct_results_dfs()
-    model_runner.check_outputs(results_filepath_string)
-    model_runner.save_results(results_filepath_string)
+    model_runner.check_outputs(".")
+    model_runner.save_results(".")
 
 
 if __name__ == "__main__":
