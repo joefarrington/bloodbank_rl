@@ -24,6 +24,8 @@ class PyomoModelRunner:
         self.a_max = a_max
         self.demand_provider = demand_provider
 
+        self.all_scenario_names = [f"{i+310}" for i in range(1, self.n_scenarios + 1)]
+
         self.checks_to_perform = self._determine_checks_to_perform()
 
     def scenario_creator(self, scenario_name):
@@ -60,13 +62,11 @@ class PyomoModelRunner:
 
     def solve_program(self):
         options = {"solver": "gurobi"}
-        all_scenario_names = [
-            f"{i+310}" for i in range(1, self.n_scenarios + 1)
-        ]  # seed 5 used for example run in Excel, so add const
+        # seed 5 used for example run in Excel, so add const
 
         self.ef = ExtensiveForm(
             options=options,
-            all_scenario_names=all_scenario_names,
+            all_scenario_names=self.all_scenario_names,
             scenario_creator=self.scenario_creator,
         )
 
@@ -126,26 +126,26 @@ class PyomoModelRunner:
             # Record the costs for each scenario and store in a single Pandas DataFrame
             scen_costs_dict = {
                 "Seed": scen,
-                "Variable cost": model.variable_cost(),
-                "Holding cost": model.holding_cost(),
-                "Fixed cost": model.fixed_cost(),
-                "Wastage cost": model.wastage_cost(),
-                "Shortage cost": model.shortage_cost(),
+                "Variable cost": round(model.variable_cost(), 0),
+                "Holding cost": round(model.holding_cost(), 0),
+                "Fixed cost": round(model.fixed_cost(), 0),
+                "Wastage cost": round(model.wastage_cost(), 0),
+                "Shortage cost": round(model.shortage_cost(), 0),
             }
 
             self.costs_df = self.costs_df.append(scen_costs_dict, ignore_index=True)
 
             # For now, also print the costs as useful for debugging
-            print(f"Variable cost: {model.variable_cost()}")
-            print(f"Holding cost: {model.holding_cost()}")
-            print(f"Fixed cost: {model.fixed_cost()}")
-            print(f"Wastage cost: {model.wastage_cost()}")
-            print(f"Shortage cost: {model.shortage_cost()}")
+            print(f"Variable cost: {round(model.variable_cost(),0)}")
+            print(f"Holding cost: {round(model.holding_cost(),0)}")
+            print(f"Fixed cost: {round(model.fixed_cost(),0)}")
+            print(f"Wastage cost: {round(model.wastage_cost(),0)}")
+            print(f"Shortage cost: {round(model.shortage_cost(),0)}")
             print("")
 
     def save_results(self, directory_path_string):
-        for i, df in enumerate(self.results_list):
-            filename = Path(directory_path_string) / f"scenario_{i}_output.csv"
+        for scen, df in zip(self.all_scenario_names, self.results_list):
+            filename = Path(directory_path_string) / f"scenario_{scen}_output.csv"
             df.to_csv(filename)
 
         filename = Path(directory_path_string) / f"all_costs.csv"
@@ -153,7 +153,7 @@ class PyomoModelRunner:
 
     def check_outputs(self, directory_path_string):
         self.results_of_checks_list = []
-        for i, scenario_df in enumerate(self.results_list):
+        for scen, scenario_df in zip(self.all_scenario_names, self.results_list):
 
             # Ensure that entries in columns with array values are numpy arrays
             array_cols = ["opening_inventory", "received", "DSSR", "closing inventory"]
@@ -183,9 +183,9 @@ class PyomoModelRunner:
             # the results if any failures for a scenario
             fail_check_rows = out_df[~out_df.all(axis=1)]
             n_rows_with_fail = fail_check_rows.shape[0]
-            print(f"Scenario {i}: {n_rows_with_fail} rows with a failed check")
+            print(f"Scenario {scen}: {n_rows_with_fail} rows with a failed check")
             if n_rows_with_fail > 0:
-                filename = Path(directory_path_string) / f"scenario_{i}_checks.csv"
+                filename = Path(directory_path_string) / f"scenario_{scen}_checks.csv"
                 out_df.to_csv(filename)
 
             self.results_of_checks_list.append(out_df)
