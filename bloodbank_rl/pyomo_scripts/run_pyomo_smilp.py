@@ -18,6 +18,9 @@ sys.path.append(str(path_root))
 from bloodbank_rl.environments.platelet_bankSR import PoissonDemandProviderSR
 from bloodbank_rl.pyomo_models.model_constructors_nonweekly import (
     sS_PyomoModelConstructor,
+    sQ_PyomoModelConstructor,
+    sSaQ_PyomoModelConstructor,
+    sSbQ_PyomoModelConstructor,
 )
 from bloodbank_rl.pyomo_models.stochastic_model_runner import PyomoModelRunner
 
@@ -28,13 +31,15 @@ def main(cfg):
     a_max = cfg.a_max
     n_scenarios = cfg.n_scenarios
     results_filepath_string = cfg.hydra_logdir
+    model_constructor = globals()[cfg.model_constructor]
+    demand_provider = globals()[cfg.demand_provider]
 
     model_runner = PyomoModelRunner(
-        model_constructor=sS_PyomoModelConstructor,
+        model_constructor=model_constructor,
         n_scenarios=n_scenarios,
         t_max=t_max,
         a_max=a_max,
-        demand_provider=PoissonDemandProviderSR,
+        demand_provider=demand_provider,
     )
     model_runner.solve_program()
     model_runner.construct_results_dfs()
