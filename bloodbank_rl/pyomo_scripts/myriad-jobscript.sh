@@ -1,8 +1,8 @@
-#! /bin/bash/ -l
+#! /bin/bash -l
 
 #$ -N pyomo-stochastic-sS
-#$ -l h_rt=00:10:00
-#$ -l mem=1G
+#$ -l h_rt=01:00:00
+#$ -l mem=8G
 #$ -pe smp 8
 #$ -cwd
 
