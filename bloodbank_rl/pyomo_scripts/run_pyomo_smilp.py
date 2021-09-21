@@ -1,10 +1,3 @@
-# import numpy as np
-# import pandas as pd
-
-# import pyomo.environ as pyo
-# import mpisppy.utils.sputils as sputils
-# from mpisppy.opt.ef import ExtensiveForm
-
 from omegaconf import DictConfig, OmegaConf
 import hydra
 
@@ -43,6 +36,7 @@ def main(cfg):
     )
     model_runner.solve_program()
     model_runner.construct_results_dfs()
+    model_runner.check_outputs(results_filepath_string)
     model_runner.save_results(results_filepath_string)
 
 
