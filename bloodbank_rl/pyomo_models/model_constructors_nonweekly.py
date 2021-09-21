@@ -242,6 +242,11 @@ class PyomoModelConstructor:
         # Impletement for each model
         pass
 
+    @staticmethod
+    def policy_parameters():
+        # Implement for each model
+        pass
+
 
 class sS_PyomoModelConstructor(PyomoModelConstructor):
     def _add_specific_variables(self):
@@ -270,6 +275,10 @@ class sS_PyomoModelConstructor(PyomoModelConstructor):
             )
             # Equation B-4
             self.model.cons.add(self.model.OQ[t] <= self.model.M * self.model.Delta[t])
+
+    @staticmethod
+    def policy_parameters():
+        return ["s", "S"]
 
 
 class sQ_PyomoModelConstructor(PyomoModelConstructor):
@@ -300,6 +309,10 @@ class sQ_PyomoModelConstructor(PyomoModelConstructor):
         # Constaint C-4
         for t in self.model.T:
             self.model.cons.add(self.model.OQ[t] <= self.model.M * self.model.Delta[t])
+
+    @staticmethod
+    def policy_parameters():
+        return ["s", "Q"]
 
 
 class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
@@ -379,6 +392,10 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
         for t in self.model.T:
             self.model.cons.add(self.model.S[t] >= self.model.s[t] + 1)
 
+    @staticmethod
+    def policy_parameters():
+        return ["s", "S", "a", "Q"]
+
 
 class sSbQ_PyomoModelConstructor(PyomoModelConstructor):
     def _add_specific_variables(self):
@@ -455,3 +472,7 @@ class sSbQ_PyomoModelConstructor(PyomoModelConstructor):
         # Equation 29
         for t in self.model.T:
             self.model.cons.add(self.model.s[t] >= self.model.b[t] + 1)
+
+    @staticmethod
+    def policy_parameters():
+        return ["s", "S", "b", "Q"]
