@@ -5,6 +5,9 @@ import pyomo.environ as pyo
 import mpisppy.utils.sputils as sputils
 from mpisppy.opt.ef import ExtensiveForm
 
+from omegaconf import DictConfig, OmegaConf
+import hydra
+
 from pathlib import Path
 import os
 import sys
@@ -18,11 +21,13 @@ from bloodbank_rl.pyomo_models.model_constructors_nonweekly import (
 )
 from bloodbank_rl.pyomo_models.stochastic_model_runner import PyomoModelRunner
 
-if __name__ == "__main__":
 
-    t_max = 30
-    a_max = 3
-    n_scenarios = 5
+@hydra.main(config_path="conf", config_name="config")
+def main(cfg):
+    t_max = cfg.t_max
+    a_max = cfg.a_max
+    n_scenarios = cfg.n_scenarios
+    results_filepath_string = cfg.hydra_logdir
 
     model_runner = PyomoModelRunner(
         model_constructor=sS_PyomoModelConstructor,
@@ -33,4 +38,8 @@ if __name__ == "__main__":
     )
     model_runner.solve_program()
     model_runner.construct_results_dfs()
-    model_runner.save_results()
+    model_runner.save_results(results_filepath_string)
+
+
+if __name__ == "__main__":
+    main()
