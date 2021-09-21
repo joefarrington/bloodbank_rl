@@ -48,7 +48,7 @@ class PyomoModelRunner:
         if self.model_constructor.policy_parameters() == ["s", "S"]:
             return [model.s, model.S]
         elif self.model_constructor.policy_parameters() == ["s", "Q"]:
-            return [model.s, model.S]
+            return [model.s, model.Q]
         elif self.model_constructor.policy_parameters() == ["s", "S", "a", "Q"]:
             return [model.s, model.S, model.a, model.Q]
         elif self.model_constructor.policy_parameters() == ["s", "S", "b", "Q"]:
