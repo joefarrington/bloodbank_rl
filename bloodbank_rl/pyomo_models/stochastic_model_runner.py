@@ -113,6 +113,7 @@ class PyomoModelRunner:
             print(f"Shortage cost: {model.shortage_cost()}")
             print("")
 
-    def save_results(self):
+    def save_results(self, directory_path_string):
         for i, df in enumerate(self.results_list):
-            df.to_csv(f"scenario_{i}_output.csv")
+            filename = Path(directory_path_string) / f"scenario_{i}_output.csv"
+            df.to_csv(filename)
