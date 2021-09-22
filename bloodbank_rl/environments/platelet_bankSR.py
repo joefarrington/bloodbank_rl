@@ -286,7 +286,7 @@ class PoissonDemandProviderSR:
         # need to provide the weekday as state
         self.additional_observation_dim = 1
 
-        self.initial_weekday = 6
+        self.initial_weekday = initial_weekday
 
     def seed(self, seed=None):
 
@@ -498,6 +498,76 @@ class PoissonDemandProviderWithForecastSR:
         # based on it to include in the state
         self.next_day_demand = self._generate_next_day_demand()
         self.next_day_forecast = self._generate_next_day_forecast()
+
+
+# This is a lightweight wrapper around the PoissonDemandProvider
+
+
+class PoissonDemandProviderLimitedScenarios:
+    def __init__(
+        self,
+        mean_daily_demands=[37.5, 37.3, 39.2, 37.8, 40.5, 27.2, 28.4],
+        sim_duration=365,
+        initial_weekday=6,
+        seed=None,
+        n_scenarios=None,
+        scenario_seeds=None,
+    ):
+        self.mean_daily_demands = mean_daily_demands
+        self.sim_duration = sim_duration
+        self.initial_weekday = initial_weekday
+
+        # Set random seed and store value for potential future logging
+        # This seed is used to generate scenario seeds if not provided
+        #  and decide which scenario is used after
+        # each reset
+        self.seed_value = self.seed(seed)
+
+        # Should specifiy either the number of scenarios or a set of seeds
+        if n_scenarios is None and scenario_seeds is None:
+            raise ValueError("Set n_scenarios or scenario_seeds")
+        elif n_scenarios is not None and scenario_seeds is not None:
+            raise ValueError("Set only one of n_scenarios and scenario_seeds")
+        elif scenario_seeds is not None:
+            self.scenario_seeds = scenario_seeds
+            self.n_scenarios = len(scenario_seeds)
+        elif n_scenarios is not None:
+            self.n_scenarios = n_scenarios
+            self.scenario_seeds = self.np_rng.integers(
+                low=0, high=1e8, size=n_scenarios
+            )
+
+        # need to provide the weekday as state
+        self.additional_observation_dim = 1
+
+    def seed(self, seed=None):
+
+        self.np_rng = np.random.default_rng(seed)
+        seed_value = self.np_rng.bit_generator._seed_seq.entropy
+
+        return [seed_value]
+
+    def get_initial_stock(self, max_age, transit_time):
+        return self.current_demand_provider.get_initial_stock(max_age, transit_time)
+
+    def generate_demand(self):
+        demand = self.current_demand_provider.generate_demand()
+        self.weekday = self.current_demand_provider.weekday
+        return demand
+
+    def additional_observation(self):
+        # Return the weekday
+        return [self.current_demand_provider.weekday]
+
+    def reset(self):
+        self.current_scenario_seed = self.np_rng.choice(self.scenario_seeds)
+        self.current_demand_provider = PoissonDemandProviderSR(
+            self.mean_daily_demands,
+            self.sim_duration,
+            self.initial_weekday,
+            seed=self.current_scenario_seed,
+        )
+        self.current_demand_provider.reset()
 
 
 class NormalDemandProviderSR:
