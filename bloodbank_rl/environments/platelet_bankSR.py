@@ -275,6 +275,7 @@ class PoissonDemandProviderSR:
         sim_duration=365,
         initial_weekday=6,
         seed=None,
+        one_hot_encode_weekday=False,
     ):
 
         self.mean_daily_demands = mean_daily_demands
@@ -284,7 +285,11 @@ class PoissonDemandProviderSR:
         self.seed_value = self.seed(seed)
 
         # need to provide the weekday as state
-        self.additional_observation_dim = 1
+        if one_hot_encode_weekday:
+            self.additional_observation_dim = 7
+        else:
+            self.additional_observation_dim = 1
+        self.one_hot_encode_weekday = one_hot_encode_weekday
 
         self.initial_weekday = initial_weekday
 
@@ -316,7 +321,12 @@ class PoissonDemandProviderSR:
 
     def additional_observation(self):
         # Return the weekday
-        return [self.weekday]
+        if self.one_hot_encode_weekday:
+            oh_weekday = [0] * 7
+            oh_weekday[self.weekday] = 1
+            return oh_weekday
+        else:
+            return [self.weekday]
 
     def reset(self):
         # Initial state is Sunday
