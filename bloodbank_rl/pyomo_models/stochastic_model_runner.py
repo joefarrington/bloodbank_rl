@@ -61,8 +61,7 @@ class PyomoModelRunner:
             raise ValueError("Policy parameters not recognised")
 
     def solve_program(self):
-        options = {"solver": "gurobi"}
-        # seed 5 used for example run in Excel, so add const
+        options = {"solver": "gurobi_persistent"}
 
         self.ef = ExtensiveForm(
             options=options,
@@ -70,7 +69,9 @@ class PyomoModelRunner:
             scenario_creator=self.scenario_creator,
         )
 
-        self.results = self.ef.solve_extensive_form()
+        self.results = self.ef.solve_extensive_form(
+            solver_options={"LogFile": "gurobi.log", "OutputFlag": 1, "LogToConsole": 0}
+        )
 
         objval = self.ef.get_objective_value()
 
