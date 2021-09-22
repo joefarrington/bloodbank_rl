@@ -520,12 +520,14 @@ class PoissonDemandProviderLimitedScenarios:
         sim_duration=365,
         initial_weekday=6,
         seed=None,
+        one_hot_encode_weekday=False,
         n_scenarios=None,
         scenario_seeds=None,
     ):
         self.mean_daily_demands = mean_daily_demands
         self.sim_duration = sim_duration
         self.initial_weekday = initial_weekday
+        self.one_hot_encode_weekday = one_hot_encode_weekday
 
         # Set random seed and store value for potential future logging
         # This seed is used to generate scenario seeds if not provided
@@ -566,16 +568,17 @@ class PoissonDemandProviderLimitedScenarios:
         return demand
 
     def additional_observation(self):
-        # Return the weekday
-        return [self.current_demand_provider.weekday]
+        # Return the additional obseration
+        return self.current_demand_provider.additional_observation()
 
     def reset(self):
         self.current_scenario_seed = self.np_rng.choice(self.scenario_seeds)
         self.current_demand_provider = PoissonDemandProviderSR(
-            self.mean_daily_demands,
-            self.sim_duration,
-            self.initial_weekday,
+            mean_daily_demands=self.mean_daily_demands,
+            sim_duration=self.sim_duration,
+            initial_weekday=self.initial_weekday,
             seed=self.current_scenario_seed,
+            one_hot_encode_weekday=self.one_hot_encode_weekday,
         )
         self.current_demand_provider.reset()
 
