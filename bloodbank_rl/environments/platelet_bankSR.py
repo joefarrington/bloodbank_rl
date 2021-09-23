@@ -550,7 +550,11 @@ class PoissonDemandProviderLimitedScenarios:
             )
 
         # need to provide the weekday as state
-        self.additional_observation_dim = 1
+        if one_hot_encode_weekday:
+            self.additional_observation_dim = 7
+        else:
+            self.additional_observation_dim = 1
+        self.one_hot_encode_weekday = one_hot_encode_weekday
 
     def seed(self, seed=None):
 
