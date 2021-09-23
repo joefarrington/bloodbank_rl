@@ -11,7 +11,6 @@
 # Default parameters based on 'Stochastic inventory model for minimizing blood shortage and outdating in a blood supply chain under supply and demand uncertainty'
 # by Shih and Rajendran (2020)
 
-import simpy
 import numpy as np
 import pandas as pd
 from collections import namedtuple, Counter
