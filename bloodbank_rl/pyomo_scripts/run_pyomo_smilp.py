@@ -25,6 +25,8 @@ def main(cfg):
     n_scenarios = cfg.n_scenarios
     model_constructor = globals()[cfg.model_constructor]
     demand_provider = globals()[cfg.demand_provider]
+    solver_string = cfg.solver_string
+    solver_options = OmegaConf.to_container(cfg.solver_options)
 
     model_runner = PyomoModelRunner(
         model_constructor=model_constructor,
@@ -32,6 +34,8 @@ def main(cfg):
         t_max=t_max,
         a_max=a_max,
         demand_provider=demand_provider,
+        solver_string=solver_string,
+        solver_options=solver_options,
     )
     model_runner.solve_program()
     model_runner.construct_results_dfs()

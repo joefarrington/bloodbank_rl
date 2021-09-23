@@ -17,12 +17,23 @@ import bloodbank_rl.pyomo_models.model_constructors_nonweekly as pyomo_mc
 
 
 class PyomoModelRunner:
-    def __init__(self, model_constructor, n_scenarios, t_max, a_max, demand_provider):
+    def __init__(
+        self,
+        model_constructor,
+        n_scenarios,
+        t_max,
+        a_max,
+        demand_provider,
+        solver_string="gurobi_persistent",
+        solver_options={"LogFile": "gurobi.log", "OutputFlag": 1, "LogToConsole": 0},
+    ):
         self.model_constructor = model_constructor
         self.n_scenarios = n_scenarios
         self.t_max = t_max
         self.a_max = a_max
         self.demand_provider = demand_provider
+        self.solver_string = solver_string
+        self.solver_options = solver_options
 
         self.all_scenario_names = [f"{i+310}" for i in range(1, self.n_scenarios + 1)]
 
@@ -61,7 +72,7 @@ class PyomoModelRunner:
             raise ValueError("Policy parameters not recognised")
 
     def solve_program(self):
-        options = {"solver": "gurobi_persistent"}
+        options = {"solver": self.solver_string}
 
         self.ef = ExtensiveForm(
             options=options,
@@ -69,9 +80,7 @@ class PyomoModelRunner:
             scenario_creator=self.scenario_creator,
         )
 
-        self.results = self.ef.solve_extensive_form(
-            solver_options={"LogFile": "gurobi.log", "OutputFlag": 1, "LogToConsole": 0}
-        )
+        self.results = self.ef.solve_extensive_form(solver_options=self.solver_options)
 
         objval = self.ef.get_objective_value()
 

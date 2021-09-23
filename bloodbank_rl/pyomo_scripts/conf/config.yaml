@@ -6,3 +6,8 @@ a_max: 3
 n_scenarios: 5
 model_constructor: sS_PyomoModelConstructor
 demand_provider: PoissonDemandProviderSR
+solver_string: gurobi_persistent
+solver_options:
+  LogFile: "gurobi.log"
+  OutputFlag: 1
+  LogToConsole: 0
