@@ -155,7 +155,6 @@ class PlateletBankGym(gym.Env):
         info = {
             "action": action,
             "demand": daily_demand,
-            "weekday": self.demand_provider.weekday,
             "daily_expiries": self.daily_expiries,
             "daily_backorders": self.daily_backorders,
             "units_in_stock": np.sum(self.inventory),
