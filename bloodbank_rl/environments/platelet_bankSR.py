@@ -332,6 +332,78 @@ class PoissonDemandProviderSR:
         self.weekday = self.initial_weekday
 
 
+### Demand provider to provde extracts from a pre-generated sequence of data
+
+
+class DFDemandProvider:
+    def __init__(
+        self,
+        df_all,
+        demand_col_name,
+        additional_observation_col_names=None,
+        sample_sim_duration=None,
+        seed=None,
+    ):
+        # Reset the index of the df for easier slicing
+        self.df_all = df_all.reset_index(drop=True)
+
+        # If not sampling, simulation uses all rows of df
+        # Otherwise, it is the length we sample
+        # If sampling, calculate the highest index we can sample that still
+        # gives us a full sim_duration before the end of the data
+        self.sample_sim_duration = sample_sim_duration
+        if self.sample_sim_duration is None:
+            self.sim_duration = self.df_all.shape[0] - 1
+        else:
+            self.sim_duration = self.sample_sim_duration
+            self.max_sample_index = self.df_all.shape[0] - self.sim_duration - 1
+
+        self.seed_value = self.seed(seed)
+
+        self.demand_col_name = demand_col_name
+
+        self.additional_observation_col_names = additional_observation_col_names
+        self.additional_observation_dim = len(self.additional_observation_col_names)
+
+    def seed(self, seed):
+        self.np_rng = np.random.default_rng(seed)
+        seed_value = self.np_rng.bit_generator._seed_seq.entropy
+
+        return [seed_value]
+
+    def get_initial_stock(self, max_age, transit_time):
+        # Initial stock is supposed to be a parameter
+        # Need to check exactly what it should be
+        # For now, just assume no stock
+
+        inventory = np.zeros((max_age))
+
+        in_transit = [0] * transit_time
+        return inventory, in_transit
+
+    def generate_demand(self):
+        self.current_index += 1
+        return self.df_all.loc[self.current_index, self.demand_col_name]
+
+    def additional_observation(self):
+        if self.additional_observation_col_names is None:
+            return None
+        else:
+            return self.df_all.loc[
+                self.current_index, self.additional_observation_col_names
+            ].values
+
+    def reset(self):
+
+        if self.sample_sim_duration is None:
+            # Just running all the rows in order
+            self.current_index = 0
+        else:
+            self.current_index = self.np_rng.integers(
+                low=0, high=self.max_sample_index + 1
+            )
+
+
 # We can use this to change the coefficient of variation.
 # But it can only do an overdispersed Poisson so min cv is
 # say 0.2, so we can't currently do the setting where CV is 0.1
