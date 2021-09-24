@@ -153,6 +153,19 @@ class Agent_sSbQ(Agent):
             return 0
 
 
+# Agent that takes a StableBaselines3 model
+# Use for evaluation after training that is
+# compatible with other methods
+class SBAgent(Agent):
+    def __init__(self, model, env, seed):
+        super().__init__(env, seed)
+        self.model = model
+
+    def _select_action(self):
+        action, _states = self.model.predict(self.state, deterministic=True)
+        return action
+
+
 # For now, we assume one value per weekday
 # and that Poisson distributed
 # TODO: pull these from the env
