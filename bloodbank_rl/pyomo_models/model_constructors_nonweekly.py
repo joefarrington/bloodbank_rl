@@ -13,7 +13,7 @@ class PyomoModelConstructor:
         holding_cost=130,
         emergency_procurement_cost=3250,
         wastage_cost=650,
-        M=500,
+        M=250,
     ):
 
         self.model = pyo.ConcreteModel()
