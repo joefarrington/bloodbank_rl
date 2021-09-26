@@ -7,7 +7,7 @@ class PyomoModelConstructor:
         demand,
         t_max=30,
         a_max=3,
-        initial_inventory={1: 0, 2: 50},
+        initial_inventory={1: 0, 2: 38},
         fixed_order_cost=225,
         variable_order_cost=650,
         holding_cost=130,
