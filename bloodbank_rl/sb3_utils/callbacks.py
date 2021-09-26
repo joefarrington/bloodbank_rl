@@ -1,4 +1,5 @@
 from stable_baselines3.common.callbacks import BaseCallback
+import numpy as np
 
 
 class LogInfoCallback(BaseCallback):
@@ -8,7 +9,7 @@ class LogInfoCallback(BaseCallback):
     # Also need to consider how you would want to log these things for
     # multiple environments being traversed at the same time
     def __init__(self, verbose=0):
-        super(MLflowCallback, self).__init__(verbose)
+        super(LogInfoCallback, self).__init__(verbose)
         self.reset()
 
     def reset(self):
