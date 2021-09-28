@@ -14,6 +14,7 @@ class PyomoModelConstructor:
         emergency_procurement_cost=3250,
         wastage_cost=650,
         M=250,
+        additional_fifo_constraints=True,
     ):
 
         self.model = pyo.ConcreteModel()
@@ -24,6 +25,8 @@ class PyomoModelConstructor:
         self.model.M = M
 
         self.model.initial_inventory = initial_inventory
+
+        self.additional_fifo_constraints = additional_fifo_constraints
 
         self.model.demand = demand
 
@@ -56,9 +59,6 @@ class PyomoModelConstructor:
         self.model.DssR = pyo.Var(
             self.model.T, self.model.A, domain=pyo.NonNegativeReals
         )  # Remaining demand on day t after using product with shelf life a days
-        self.model.binDssR = pyo.Var(
-            self.model.T, self.model.A, domain=pyo.Binary
-        )  # Binary flag if there is remaining demand on day t after using product with shelf life a days
         self.model.IssB = pyo.Var(
             self.model.T, self.model.A, domain=pyo.NonNegativeReals
         )  # On-hand inventory at the beginning of day t with shelf life a days
@@ -83,6 +83,11 @@ class PyomoModelConstructor:
         self.model.s = pyo.Var(
             self.model.T, domain=pyo.NonNegativeReals
         )  # re-order point
+
+        if self.additional_fifo_constraints:
+            self.model.binDssR = pyo.Var(
+                self.model.T, self.model.A, domain=pyo.Binary
+            )  # Binary flag if there is remaining demand on day t after using product with shelf life a days
 
     def _add_cost_function(self):
 
@@ -155,18 +160,19 @@ class PyomoModelConstructor:
                         == self.model.DssR[t, a] - self.model.IssE[t, a]
                     )
 
-        # We need to enforce that only one variable on the RHS on equations 7 and 8 can be non-zero
-        # For that we need an extra binary variable e.g. Pauls-Worm (inventory control for a perishable product with non-stationary
-        # demand and service level constraints)
-        for t in self.model.T:
-            for a in self.model.A:
-                self.model.cons.add(
-                    self.model.M * self.model.binDssR[t, a] >= self.model.DssR[t, a]
-                )
-                self.model.cons.add(
-                    self.model.M * (1 - self.model.binDssR[t, a])
-                    >= self.model.IssE[t, a]
-                )
+        if self.additional_fifo_constraints:
+            # We need to enforce that only one variable on the RHS on equations 7 and 8 can be non-zero
+            # For that we need an extra binary variable e.g. Pauls-Worm (inventory control for a perishable product with non-stationary
+            # demand and service level constraints)
+            for t in self.model.T:
+                for a in self.model.A:
+                    self.model.cons.add(
+                        self.model.M * self.model.binDssR[t, a] >= self.model.DssR[t, a]
+                    )
+                    self.model.cons.add(
+                        self.model.M * (1 - self.model.binDssR[t, a])
+                        >= self.model.IssE[t, a]
+                    )
 
         # Equation 9
         # Amended to just suself.model.m over X for t < current t
