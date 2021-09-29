@@ -1,5 +1,7 @@
 from omegaconf import DictConfig, OmegaConf
 import hydra
+import logging
+import subprocess
 
 from pathlib import Path
 import os
@@ -17,6 +19,12 @@ from bloodbank_rl.pyomo_models.model_constructors_nonweekly import (
 )
 from bloodbank_rl.pyomo_models.stochastic_model_runner import PyomoModelRunner
 
+log = logging.getLogger(__name__)
+
+# Function to get git hash from https://stackoverflow.com/a/21901260
+def get_git_revision_hash() -> str:
+    return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("ascii").strip()
+
 
 @hydra.main(config_path="conf", config_name="config")
 def main(cfg):
@@ -28,6 +36,8 @@ def main(cfg):
     solver_string = cfg.solver_string
     solver_options = OmegaConf.to_container(cfg.solver_options)
 
+    log.info(f"Git revision hash: {get_git_revision_hash()}")
+
     model_runner = PyomoModelRunner(
         model_constructor=model_constructor,
         n_scenarios=n_scenarios,
@@ -36,6 +46,7 @@ def main(cfg):
         demand_provider=demand_provider,
         solver_string=solver_string,
         solver_options=solver_options,
+        log=log,
     )
     model_runner.solve_program()
     model_runner.construct_results_dfs()
