@@ -20,25 +20,19 @@ class PyomoModelRunner:
     def __init__(
         self,
         model_constructor,
+        model_constructor_params,
         n_scenarios,
-        t_max,
-        a_max,
         demand_provider,
         solver_string="gurobi_persistent",
         solver_options={"LogFile": "gurobi.log", "OutputFlag": 1, "LogToConsole": 0},
         log=None,
-        weekly_policy=False,
     ):
         self.model_constructor = model_constructor
+        self.model_constructor_params = model_constructor_params
         self.n_scenarios = n_scenarios
-        self.t_max = t_max
-        self.a_max = a_max
         self.demand_provider = demand_provider
         self.solver_string = solver_string
         self.solver_options = solver_options
-
-        # Temporarily store this way to check logging
-        self.weekly_policy = weekly_policy
 
         self.all_scenario_names = [f"{i+310}" for i in range(1, self.n_scenarios + 1)]
 
@@ -49,10 +43,13 @@ class PyomoModelRunner:
     def scenario_creator(self, scenario_name):
         prov = self.demand_provider(seed=int(scenario_name))
         prov.reset()
-        demand = {t: prov.generate_demand() for t in range(1, self.t_max + 1)}
+        demand = {
+            t: prov.generate_demand()
+            for t in range(1, self.model_constructor_params["t_max"] + 1)
+        }
 
         model = self.model_constructor(
-            demand=demand, t_max=self.t_max, a_max=self.a_max
+            demand=demand, **self.model_constructor_params
         ).build_model()
 
         # Telling it which decisions belong to first stage - for us this could be all our policy parameters
@@ -109,7 +106,10 @@ class PyomoModelRunner:
             scen = tup[0]
             prov = self.demand_provider(seed=int(scen))
             prov.reset()
-            demand = {t: prov.generate_demand() for t in range(1, self.t_max + 1)}
+            demand = {
+                t: prov.generate_demand()
+                for t in range(1, self.model_constructor_params["t_max"] + 1)
+            }
             model = tup[1]
 
             # Add common variables to output
@@ -135,7 +135,7 @@ class PyomoModelRunner:
             # Add policy paramters to results
             for res_dict, t in zip(res_dicts, model.T):
                 for param in self.model_constructor.policy_parameters():
-                    if self.weekly_policy:
+                    if self.model_constructor_params["weekly_policy"]:
                         param_string = f"model.{param}[(t-1) % 7]()"
                     else:
                         param_string = f"model.{param}[t]()"

@@ -29,7 +29,8 @@ class PyomoModelConstructor:
 
         self.model.M = M
 
-        self.model.initial_inventory = initial_inventory
+        # Hydra doesn't support integer keys so convert here if needed
+        self.model.initial_inventory = {int(k): v for k, v in initial_inventory.items()}
 
         self.additional_fifo_constraints = additional_fifo_constraints
 

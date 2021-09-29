@@ -28,10 +28,9 @@ def get_git_revision_hash() -> str:
 
 @hydra.main(config_path="conf", config_name="config")
 def main(cfg):
-    t_max = cfg.t_max
-    a_max = cfg.a_max
     n_scenarios = cfg.n_scenarios
     model_constructor = globals()[cfg.model_constructor]
+    model_constructor_params = OmegaConf.to_container(cfg.model_constructor_params)
     demand_provider = globals()[cfg.demand_provider]
     solver_string = cfg.solver_string
     solver_options = OmegaConf.to_container(cfg.solver_options)
@@ -40,9 +39,8 @@ def main(cfg):
 
     model_runner = PyomoModelRunner(
         model_constructor=model_constructor,
+        model_constructor_params=model_constructor_params,
         n_scenarios=n_scenarios,
-        t_max=t_max,
-        a_max=a_max,
         demand_provider=demand_provider,
         solver_string=solver_string,
         solver_options=solver_options,
