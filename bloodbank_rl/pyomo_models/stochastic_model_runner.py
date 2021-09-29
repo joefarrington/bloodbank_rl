@@ -26,6 +26,7 @@ class PyomoModelRunner:
         demand_provider,
         solver_string="gurobi_persistent",
         solver_options={"LogFile": "gurobi.log", "OutputFlag": 1, "LogToConsole": 0},
+        log=None,
     ):
         self.model_constructor = model_constructor
         self.n_scenarios = n_scenarios
@@ -38,6 +39,8 @@ class PyomoModelRunner:
         self.all_scenario_names = [f"{i+310}" for i in range(1, self.n_scenarios + 1)]
 
         self.checks_to_perform = self._determine_checks_to_perform()
+
+        self.log = log
 
     def scenario_creator(self, scenario_name):
         prov = self.demand_provider(seed=int(scenario_name))
@@ -64,10 +67,10 @@ class PyomoModelRunner:
             return [model.s, model.S]
         elif self.model_constructor.policy_parameters() == ["s", "Q"]:
             return [model.s, model.Q]
-        elif self.model_constructor.policy_parameters() == ["s", "S", "a", "Q"]:
-            return [model.s, model.S, model.a, model.Q]
-        elif self.model_constructor.policy_parameters() == ["s", "S", "b", "Q"]:
-            return [model.s, model.S, model.b, model.Q]
+        elif self.model_constructor.policy_parameters() == ["s", "S", "alpha", "Q"]:
+            return [model.s, model.S, model.alpha, model.Q]
+        elif self.model_constructor.policy_parameters() == ["s", "S", "beta", "Q"]:
+            return [model.s, model.S, model.beta, model.Q]
         else:
             raise ValueError("Policy parameters not recognised")
 
@@ -100,7 +103,6 @@ class PyomoModelRunner:
         )
         for tup in self.ef.scenarios():
             scen = tup[0]
-            print(f"Scenario {scen}")
             prov = self.demand_provider(seed=int(scen))
             prov.reset()
             demand = {t: prov.generate_demand() for t in range(1, self.t_max + 1)}
@@ -145,13 +147,21 @@ class PyomoModelRunner:
 
             self.costs_df = self.costs_df.append(scen_costs_dict, ignore_index=True)
 
-            # For now, also print the costs as useful for debugging
-            print(f"Variable cost: {round(model.variable_cost(),0)}")
-            print(f"Holding cost: {round(model.holding_cost(),0)}")
-            print(f"Fixed cost: {round(model.fixed_cost(),0)}")
-            print(f"Wastage cost: {round(model.wastage_cost(),0)}")
-            print(f"Shortage cost: {round(model.shortage_cost(),0)}")
-            print("")
+            if self.log is not None:
+                self.log.info(f"##### Scenario {scen} #####")
+                self.log.info(f"Variable cost: {round(model.variable_cost(),0)}")
+                self.log.info(f"Holding cost: {round(model.holding_cost(),0)}")
+                self.log.info(f"Fixed cost: {round(model.fixed_cost(),0)}")
+                self.log.info(f"Wastage cost: {round(model.wastage_cost(),0)}")
+                self.log.info(f"Shortage cost: {round(model.shortage_cost(),0)}")
+            else:
+                print(f"##### Scenario {scen} #####")
+                # For now, also print the costs as useful for debugging
+                print(f"Variable cost: {round(model.variable_cost(),0)}")
+                print(f"Holding cost: {round(model.holding_cost(),0)}")
+                print(f"Fixed cost: {round(model.fixed_cost(),0)}")
+                print(f"Wastage cost: {round(model.wastage_cost(),0)}")
+                print(f"Shortage cost: {round(model.shortage_cost(),0)}")
 
     def save_results(self, directory_path_string):
         for scen, df in zip(self.all_scenario_names, self.results_list):
@@ -193,7 +203,13 @@ class PyomoModelRunner:
             # the results if any failures for a scenario
             fail_check_rows = out_df[~out_df.all(axis=1)]
             n_rows_with_fail = fail_check_rows.shape[0]
-            print(f"Scenario {scen}: {n_rows_with_fail} rows with a failed check")
+            if self.log is not None:
+                self.log.info(
+                    f"Scenario {scen}: {n_rows_with_fail} rows with a failed check"
+                )
+            else:
+                print(f"Scenario {scen}: {n_rows_with_fail} rows with a failed check")
+
             if n_rows_with_fail > 0:
                 filename = Path(directory_path_string) / f"scenario_{scen}_checks.csv"
                 out_df.to_csv(filename)
@@ -216,9 +232,9 @@ class PyomoModelRunner:
             return checks_to_run + [self._check_sS]
         elif self.model_constructor.policy_parameters() == ["s", "Q"]:
             return checks_to_run + [self._check_sQ]
-        elif self.model_constructor.policy_parameters() == ["s", "S", "a", "Q"]:
+        elif self.model_constructor.policy_parameters() == ["s", "S", "alpha", "Q"]:
             return checks_to_run + [self._check_sSaQ]
-        elif self.model_constructor.policy_parameters() == ["s", "S", "b", "Q"]:
+        elif self.model_constructor.policy_parameters() == ["s", "S", "beta", "Q"]:
             return checks_to_run + [self._check_sSbQ]
         else:
             raise ValueError("Policy parameters not recognised")
@@ -341,9 +357,9 @@ class PyomoModelRunner:
 
         S_gt_s = row["S"] >= row["s"] + 1
 
-        s_gt_a = row["s"] >= row["a"] + 1
+        s_gt_a = row["s"] >= row["alpha"] + 1
 
-        if row["inventory position"] < row["a"]:
+        if row["inventory position"] < row["alpha"]:
             order_quantity_to_params = (
                 row["order quantity"] == row["S"] - row["inventory position"]
             )
@@ -364,9 +380,9 @@ class PyomoModelRunner:
 
         S_gt_s = row["S"] >= row["s"] + 1
 
-        s_gt_b = row["s"] >= row["b"] + 1
+        s_gt_b = row["s"] >= row["beta"] + 1
 
-        if row["inventory position"] < row["b"]:
+        if row["inventory position"] < row["beta"]:
             order_quantity_to_params = row["order quantity"] == row["Q"]
         elif row["inventory position"] < row["s"]:
             order_quantity_to_params = (

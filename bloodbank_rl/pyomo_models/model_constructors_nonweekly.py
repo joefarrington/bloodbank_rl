@@ -328,7 +328,7 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
         self.model.Q = pyo.Var(
             self.model.T, domain=pyo.NonNegativeReals
         )  # order-up to level
-        self.model.a = pyo.Var(self.model.T, domain=pyo.NonNegativeReals)
+        self.model.alpha = pyo.Var(self.model.T, domain=pyo.NonNegativeReals)
         self.model.delta = pyo.Var(
             self.model.T, domain=pyo.Binary
         )  # 1 if IP_t is less than a, 0 otherwise
@@ -339,13 +339,14 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
         for t in self.model.T:
             self.model.cons.add(
                 self.model.IP[t]
-                <= (self.model.a[t] - 1) + self.model.M * (1 - self.model.delta[t])
+                <= (self.model.alpha[t] - 1) + self.model.M * (1 - self.model.delta[t])
             )
 
         # Equation 13
         for t in self.model.T:
             self.model.cons.add(
-                self.model.IP[t] >= self.model.a[t] - self.model.M * self.model.delta[t]
+                self.model.IP[t]
+                >= self.model.alpha[t] - self.model.M * self.model.delta[t]
             )
 
         # Equation 14 - linearised into A-1 to A-5
@@ -392,7 +393,7 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
 
         # Equation 15
         for t in self.model.T:
-            self.model.cons.add(self.model.s[t] >= self.model.a[t] + 1)
+            self.model.cons.add(self.model.s[t] >= self.model.alpha[t] + 1)
 
         # Equation 16
         for t in self.model.T:
@@ -400,7 +401,7 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
 
     @staticmethod
     def policy_parameters():
-        return ["s", "S", "a", "Q"]
+        return ["s", "S", "alpha", "Q"]
 
 
 class sSbQ_PyomoModelConstructor(PyomoModelConstructor):
@@ -409,10 +410,10 @@ class sSbQ_PyomoModelConstructor(PyomoModelConstructor):
         self.model.Q = pyo.Var(
             self.model.T, domain=pyo.NonNegativeReals
         )  # order-up to level
-        self.model.b = pyo.Var(self.model.T, domain=pyo.NonNegativeReals)
+        self.model.beta = pyo.Var(self.model.T, domain=pyo.NonNegativeReals)
         self.model.nu = pyo.Var(
             self.model.T, domain=pyo.Binary
-        )  # 1 if IP_t is less than b, 0 otherwise
+        )  # 1 if IP_t is less than beta, 0 otherwise
 
     def _add_specific_constraints(self):
 
@@ -424,13 +425,13 @@ class sSbQ_PyomoModelConstructor(PyomoModelConstructor):
         for t in self.model.T:
             self.model.cons.add(
                 self.model.IP[t]
-                <= (self.model.b[t] - 1) + self.model.M * (1 - self.model.nu[t])
+                <= (self.model.beta[t] - 1) + self.model.M * (1 - self.model.nu[t])
             )
 
         # Equation 27
         for t in self.model.T:
             self.model.cons.add(
-                self.model.IP[t] >= self.model.b[t] - self.model.M * self.model.nu[t]
+                self.model.IP[t] >= self.model.beta[t] - self.model.M * self.model.nu[t]
             )
 
         # Equation 28 - lineared into A-6 to A-10
@@ -477,8 +478,8 @@ class sSbQ_PyomoModelConstructor(PyomoModelConstructor):
 
         # Equation 29
         for t in self.model.T:
-            self.model.cons.add(self.model.s[t] >= self.model.b[t] + 1)
+            self.model.cons.add(self.model.s[t] >= self.model.beta[t] + 1)
 
     @staticmethod
     def policy_parameters():
-        return ["s", "S", "b", "Q"]
+        return ["s", "S", "beta", "Q"]
