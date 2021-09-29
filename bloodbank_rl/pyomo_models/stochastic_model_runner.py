@@ -13,7 +13,7 @@ path_root = Path(os.path.abspath(__file__)).parents[2]
 sys.path.append(str(path_root))
 
 from bloodbank_rl.environments.platelet_bankSR import PoissonDemandProviderSR
-import bloodbank_rl.pyomo_models.model_constructors_nonweekly as pyomo_mc
+import bloodbank_rl.pyomo_models.model_constructors as pyomo_mc
 
 
 class PyomoModelRunner:
@@ -27,6 +27,7 @@ class PyomoModelRunner:
         solver_string="gurobi_persistent",
         solver_options={"LogFile": "gurobi.log", "OutputFlag": 1, "LogToConsole": 0},
         log=None,
+        weekly_policy=False,
     ):
         self.model_constructor = model_constructor
         self.n_scenarios = n_scenarios
@@ -35,6 +36,9 @@ class PyomoModelRunner:
         self.demand_provider = demand_provider
         self.solver_string = solver_string
         self.solver_options = solver_options
+
+        # Temporarily store this way to check logging
+        self.weekly_policy = weekly_policy
 
         self.all_scenario_names = [f"{i+310}" for i in range(1, self.n_scenarios + 1)]
 
@@ -131,7 +135,11 @@ class PyomoModelRunner:
             # Add policy paramters to results
             for res_dict, t in zip(res_dicts, model.T):
                 for param in self.model_constructor.policy_parameters():
-                    res_dict[f"{param}"] = round(eval(f"model.{param}[t]()"), 0)
+                    if self.weekly_policy:
+                        param_string = f"model.{param}[(t-1) % 7]()"
+                    else:
+                        param_string = f"model.{param}[t]()"
+                    res_dict[f"{param}"] = round(eval(param_string), 0)
 
             self.results_list.append(pd.DataFrame(res_dicts))
 

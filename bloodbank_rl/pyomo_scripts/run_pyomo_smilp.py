@@ -11,7 +11,7 @@ path_root = Path(os.path.abspath(__file__)).parents[2]
 sys.path.append(str(path_root))
 
 from bloodbank_rl.environments.platelet_bankSR import PoissonDemandProviderSR
-from bloodbank_rl.pyomo_models.model_constructors_nonweekly import (
+from bloodbank_rl.pyomo_models.model_constructors import (
     sS_PyomoModelConstructor,
     sQ_PyomoModelConstructor,
     sSaQ_PyomoModelConstructor,
