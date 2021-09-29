@@ -24,6 +24,7 @@ pyglet = "1.5.11"
 ray = {extras = ["rllib"], version = "^1.4.1"}
 ipyparams = "^0.2.1"
 ipynbname = "^2021.3.2"
+gurobipy = "^9.1.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.2"
