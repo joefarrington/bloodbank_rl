@@ -530,7 +530,7 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
         ## Equation A-1
         for t in self.model.T:
             self.model.cons.add(
-                self.model.OQ[t]
+                self.model.OQ[(t - 1) % 7]
                 <= self.model.Q[(t - 1) % 7]
                 + self.model.M * self.model.delta[t]
                 + self.model.M * (1 - self.model.Delta[t])
@@ -539,7 +539,7 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
         ## Equation A-2
         for t in self.model.T:
             self.model.cons.add(
-                self.model.OQ[t]
+                self.model.OQ[(t - 1) % 7]
                 >= self.model.Q[(t - 1) % 7]
                 - self.model.M * self.model.delta[t]
                 - self.model.M * (1 - self.model.Delta[t])
@@ -548,7 +548,7 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
         ## Equation A-3
         for t in self.model.T:
             self.model.cons.add(
-                self.model.OQ[t]
+                self.model.OQ[(t - 1) % 7]
                 <= (self.model.S[(t - 1) % 7] - self.model.IP[t])
                 + self.model.M * (1 - self.model.delta[t])
                 + self.model.M * (1 - self.model.Delta[t])
@@ -557,7 +557,7 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
         ## Equation A-4
         for t in self.model.T:
             self.model.cons.add(
-                self.model.OQ[t]
+                self.model.OQ[(t - 1) % 7]
                 >= (self.model.S[(t - 1) % 7] - self.model.IP[t])
                 - self.model.M * (1 - self.model.delta[t])
                 - self.model.M * (1 - self.model.Delta[t])
@@ -565,7 +565,9 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
 
         ## Equation A-5
         for t in self.model.T:
-            self.model.cons.add(self.model.OQ[t] <= self.model.M * self.model.Delta[t])
+            self.model.cons.add(
+                self.model.OQ[(t - 1) % 7] <= self.model.M * self.model.Delta[t]
+            )
 
         # Equation 15
         for w in self.model.Wd:
