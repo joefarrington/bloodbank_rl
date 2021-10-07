@@ -4,6 +4,9 @@
 
 import tianshou
 import numpy as np
+from datetime import datetime
+from pathlib import Path
+import torch
 
 from numbers import Number
 from typing import Callable, Dict, Optional, Tuple, Union
@@ -15,7 +18,7 @@ import mlflow.projects.utils as mlflow_utils
 from mlflow.projects.utils import *
 
 LOG_DATA_TYPE = Dict[str, Union[int, Number, np.number, np.ndarray]]
-LOCAL_FILE_URI_PREFIX = LOCAL_FILE_URI_PREFIX = "file:"
+LOCAL_FILE_URI_PREFIX = "file:"
 
 # Function to flatten dictionaries to get a better logging name space for mlflow
 def process_nested_dict(d, delimiter="--", max_level=2):
@@ -54,13 +57,13 @@ class TianshouMLFlowLogger(tianshou.utils.BaseLogger):
         artifact_location=None,
         filename=None,
         info_logger=None,
+        policy=None,
+        model_checkpoints=False,
+        cp_path="",
     ):
         super().__init__(train_interval, test_interval, update_interval)
-
         if not tracking_uri:
             tracking_uri = f"{LOCAL_FILE_URI_PREFIX}{save_dir}"
-        if not artifact_location:
-            artifact_location = f"{LOCAL_FILE_URI_PREFIX}{artifact_location}"
 
         self._experiment_name = experiment_name
         self._experiment_id = None
@@ -71,6 +74,19 @@ class TianshouMLFlowLogger(tianshou.utils.BaseLogger):
         self._prefix = prefix
         self._artifact_location = artifact_location
         self.info_logger = info_logger
+
+        self.policy = policy
+        self.model_checkpoints = model_checkpoints
+        self.best_test_reward = None
+
+        if self.model_checkpoints:
+            if cp_path is None:
+                now_day = datetime.strftime(datetime.now(), "%Y-%m-%d")
+                now_time = datetime.strftime(datetime.now(), "%H-%M-%S")
+                self.cp_path = Path(f"./model_checkpoints/{now_day}/{now_time}/")
+            else:
+                self.cp_path = Path(cp_path)
+            self.cp_path.mkdir(parents=True, exist_ok=True)
 
         self._mlflow_client = MlflowClient(tracking_uri)
 
@@ -98,6 +114,8 @@ class TianshouMLFlowLogger(tianshou.utils.BaseLogger):
                 experiment_id=self._experiment_id, tags=self.tags
             )
             self._run_id = run.info.run_id
+
+        e = self._mlflow_client.get_experiment(self._experiment_id)
         return self._mlflow_client
 
     @property
@@ -120,7 +138,6 @@ class TianshouMLFlowLogger(tianshou.utils.BaseLogger):
 
     def log_hyperparameters(self, params):
         params_to_log = process_nested_dict(params)
-        print(params_to_log)
         for k, v in params_to_log.items():
             if len(str(v)) > 250:
                 f"Mlflow only allows parameters with up to 250 characters. Discard {k}={v}", RuntimeWarning
@@ -171,6 +188,16 @@ class TianshouMLFlowLogger(tianshou.utils.BaseLogger):
 
             self.write("test/env_step", step, log_data)
             self.last_log_test_step = step
+
+            if self.model_checkpoints:
+                if self.best_test_reward is None or rew > self.best_test_reward:
+                    self.best_test_reward = rew
+                    torch.save(
+                        self.policy.state_dict(),
+                        self.cp_path.joinpath(
+                            f"step_{step}_rew_{self.best_test_reward}.dat"
+                        ),
+                    )
 
     @staticmethod
     def _get_mlflow_tags(filename=None, manual_tags=None):

@@ -24,10 +24,6 @@ from bloodbank_rl.tianshou_utils.exploration import EpsilonScheduler
 @hydra.main(config_path="conf", config_name="config.yaml")
 def main(cfg):
 
-    logger = hydra.utils.instantiate(cfg.logger)
-    conf_dict = OmegaConf.to_container(cfg, resolve=True)
-    logger.log_hyperparameters(conf_dict)
-
     # Single env just used to determine state and actions spaces
     env = hydra.utils.instantiate(cfg.env)
     train_envs = ts.env.DummyVectorEnv(
@@ -63,6 +59,10 @@ def main(cfg):
 
     policy = hydra.utils.instantiate(cfg.policy, model=net, optim=optim)
 
+    logger = hydra.utils.instantiate(cfg.logger, policy=policy)
+    conf_dict = OmegaConf.to_container(cfg, resolve=True)
+    logger.log_hyperparameters(conf_dict)
+
     train_collector = hydra.utils.instantiate(
         cfg.train_collector, policy=policy, env=train_envs
     )
@@ -93,9 +93,11 @@ def main(cfg):
     )
 
     # Additional logging
-    logger.experiment.log_artifacts(
-        logger.run_id, cfg.hydra_logdir, artifact_path="hydra_logs"
-    )
+    logger.experiment.log_artifacts(logger.run_id, cfg.hydra_logdir)
+    # if logger.model_checkpoints:
+    #    logger.experiment.log_artifacts(
+    #        logger.run_id, logger.cp_path, artifact_path="model_checkpoints"
+    #    )
 
     print(f'Finished training in {result["duration"]}')
     logger.close()

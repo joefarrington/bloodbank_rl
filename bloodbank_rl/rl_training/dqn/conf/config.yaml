@@ -1,7 +1,7 @@
 hydra:
   run:
     dir: .
-  output_subdir: ./hydra_output/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  output_subdir: ./tmp_logs/hydra_output/${now:%Y-%m-%d}/${now:%H-%M-%S}
 hydra_logdir: ${hydra:output_subdir}
 device: cuda
 env:
@@ -49,9 +49,11 @@ test_collector:
 logger:
   _target_: bloodbank_rl.tianshou_utils.logging.TianshouMLFlowLogger
   filename: train_dqn.py
-  experiment_name: tianshou_dqn
+  experiment_name: dqn_tianshou
   info_logger:
     _target_: bloodbank_rl.tianshou_utils.logging.InfoLogger
+  model_checkpoints: True
+  cp_path: ${hydra:output_subdir}/model_checkpoints
 n_steps_before_learning: 10000
 trainer:
   _target_: tianshou.trainer.offpolicy_trainer
