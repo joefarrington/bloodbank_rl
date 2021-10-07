@@ -57,11 +57,11 @@ logger:
 n_steps_before_learning: 10000
 trainer:
   _target_: tianshou.trainer.offpolicy_trainer
-  max_epoch: 5
-  step_per_epoch: 500
+  max_epoch: 110
+  step_per_epoch: 5000
   step_per_collect: 1
   update_per_step: 1
-  episode_per_test: 10
+  episode_per_test: 100
   batch_size: 64
   verbose: False
 exploration:
