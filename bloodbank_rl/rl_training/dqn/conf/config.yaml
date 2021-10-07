@@ -57,7 +57,7 @@ logger:
 n_steps_before_learning: 10000
 trainer:
   _target_: tianshou.trainer.offpolicy_trainer
-  max_epoch: 110
+  max_epoch: 200
   step_per_epoch: 5000
   step_per_collect: 1
   update_per_step: 1
@@ -69,8 +69,8 @@ exploration:
   max_epoch: ${trainer.max_epoch}
   step_per_epoch: ${trainer.step_per_epoch}
   eps_max: 1
-  eps_min: 0.01
-  exploration_fraction: 0.8
+  eps_min: 0.10
+  exploration_fraction: 0.5
 seed: 57
 
 
