@@ -1,0 +1,74 @@
+hydra:
+  run:
+    dir: .
+  output_subdir: ./hydra_output/${now:%Y-%m-%d}/${now:%H-%M-%S}
+hydra_logdir: ${hydra:output_subdir}
+device: cuda
+env:
+  _target_: bloodbank_rl.environments.platelet_bankSR.PlateletBankGym
+  demand_provider: 
+    _target_: bloodbank_rl.environments.platelet_bankSR.PoissonDemandProviderSR
+    sim_duration: 365
+  max_order: 60
+  max_shelf_life: 3
+  lead_time: 0
+  shelf_life_at_arrival_dist: [0,0,1]
+  fixed_order_cost: 225
+  variable_order_cost: 650
+  holding_cost: 130
+  emergency_procurement_cost: 3250
+  wastage_cost: 650
+vec_env:
+  n_train_envs: 1
+  train_env_seed: 11
+  n_test_envs: 1
+  test_env_seed: 12
+model:
+  _target_: bloodbank_rl.tianshou_utils.models.FCDQN
+  n_hidden: [128,128,128]
+  device: ${device}
+optimiser:
+  _target_: torch.optim.Adam
+  lr: 1e-5
+policy:
+  _target_: tianshou.policy.DQNPolicy
+  discount_factor: 0.75
+  estimation_step: 1
+  target_update_freq: 1000
+  is_double: False
+train_collector:
+  _target_: tianshou.data.Collector
+  buffer:
+    _target_: tianshou.data.VectorReplayBuffer
+    total_size: 1000000
+    buffer_num: ${vec_env.n_train_envs}
+  exploration_noise: True
+test_collector:
+  _target_: tianshou.data.Collector
+  exploration_noise: True
+logger:
+  _target_: bloodbank_rl.tianshou_utils.logging.TianshouMLFlowLogger
+  filename: train_dqn.py
+  experiment_name: tianshou_dqn
+  info_logger:
+    _target_: bloodbank_rl.tianshou_utils.logging.InfoLogger
+n_steps_before_learning: 10000
+trainer:
+  _target_: tianshou.trainer.offpolicy_trainer
+  max_epoch: 5
+  step_per_epoch: 500
+  step_per_collect: 1
+  update_per_step: 1
+  episode_per_test: 10
+  batch_size: 64
+  verbose: False
+exploration:
+  _target_: bloodbank_rl.tianshou_utils.exploration.EpsilonScheduler
+  max_epoch: ${trainer.max_epoch}
+  step_per_epoch: ${trainer.step_per_epoch}
+  eps_max: 1
+  eps_min: 0.01
+  exploration_fraction: 0.8
+seed: 57
+
+

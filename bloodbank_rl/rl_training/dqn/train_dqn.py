@@ -18,143 +18,79 @@ from bloodbank_rl.baseline_agents.baseline_agents import Agent
 
 from bloodbank_rl.tianshou_utils.logging import TianshouMLFlowLogger, InfoLogger
 from bloodbank_rl.tianshou_utils.models import FCDQN
+from bloodbank_rl.tianshou_utils.exploration import EpsilonScheduler
 
 
-def main():
+@hydra.main(config_path="conf", config_name="config.yaml")
+def main(cfg):
 
-    # Define environments
-    env = PlateletBankGym(
-        PoissonDemandProviderSR,
-        {"sim_duration": 365},
-        60,
-        3,
-        0,
-        [0, 0, 1],
-        225,
-        650,
-        130,
-        3250,
-        650,
-    )
+    # Single env just used to determine state and actions spaces
+    env = hydra.utils.instantiate(cfg.env)
     train_envs = ts.env.DummyVectorEnv(
         [
-            lambda: PlateletBankGym(
-                PoissonDemandProviderSR,
-                {"sim_duration": 365},
-                60,
-                3,
-                0,
-                [0, 0, 1],
-                225,
-                650,
-                130,
-                3250,
-                650,
-            )
-            for _ in range(1)
+            lambda: hydra.utils.instantiate(cfg.env)
+            for _ in range(cfg.vec_env.n_train_envs)
         ]
     )
+
     test_envs = ts.env.DummyVectorEnv(
         [
-            lambda: PlateletBankGym(
-                PoissonDemandProviderSR,
-                {"sim_duration": 365},
-                60,
-                3,
-                0,
-                [0, 0, 1],
-                225,
-                650,
-                130,
-                3250,
-                650,
-            )
-            for _ in range(1)
+            lambda: hydra.utils.instantiate(cfg.env)
+            for _ in range(cfg.vec_env.n_test_envs)
         ]
     )
 
-    np.random.seed(57)
-    torch.manual_seed(57)
-    train_envs.seed(11)
-    test_envs.seed(12)
+    # Seed everything for reproducibility
+    # Train and test encs can either take int or list same length as n_envs
+    np.random.seed(cfg.seed)
+    torch.manual_seed(cfg.seed)
+    train_envs.seed(cfg.vec_env.train_env_seed)
+    test_envs.seed(cfg.vec_env.test_env_seed)
 
+    # Set up the DQN network
     state_shape = env.observation_space.shape or env.observation_space.n
     action_shape = env.action_space.shape or env.action_space.n
-    net = FCDQN(state_shape, action_shape, n_hidden=[128, 128, 128], device="cuda").to(
-        device="cuda"
+
+    net = hydra.utils.instantiate(
+        cfg.model, state_shape=state_shape, action_shape=action_shape
+    ).to(device=cfg.device)
+
+    optim = hydra.utils.instantiate(cfg.optimiser, params=net.parameters())
+
+    policy = hydra.utils.instantiate(cfg.policy, model=net, optim=optim)
+
+    logger = hydra.utils.instantiate(cfg.logger)
+
+    train_collector = hydra.utils.instantiate(
+        cfg.train_collector, policy=policy, env=train_envs
     )
-    optim = torch.optim.Adam(net.parameters(), lr=1e-5)
-
-    # Declare the policy
-    policy = ts.policy.DQNPolicy(
-        net,
-        optim,
-        discount_factor=0.75,
-        estimation_step=1,
-        target_update_freq=1000,
-        is_double=False,
-    )
-
-    # Declare the collectors
-    train_collector = ts.data.Collector(
-        policy,
-        train_envs,
-        ts.data.VectorReplayBuffer(1000000, 1),
-        exploration_noise=True,
-    )
-    test_collector = ts.data.Collector(policy, test_envs, exploration_noise=True)
-
-    # Declare parameters for epsilon greedy exploration
-    step_per_epoch = 500
-    max_epoch = 5
-
-    max_steps = step_per_epoch * max_epoch
-    eps_max = 1
-    eps_min = 0.01
-    exploration_fraction = 0.8
-
-    def decay_eps(epoch, env_step):
-        eps = max(eps_min, eps_max - env_step / (max_steps * exploration_fraction))
-        return eps
-
-    # Run and log training
-    logger = TianshouMLFlowLogger(
-        filename="train_dqn.py",
-        experiment_name="tianshou_dqn",
-        info_logger=InfoLogger(),
-    )
-
-    train_collector = ts.data.Collector(
-        policy,
-        train_envs,
-        ts.data.VectorReplayBuffer(1000000, 1),
-        exploration_noise=True,
-    )
-    test_collector = ts.data.Collector(
-        policy,
-        test_envs,
-        exploration_noise=True,
+    test_collector = hydra.utils.instantiate(
+        cfg.test_collector,
+        policy=policy,
+        env=test_envs,
         preprocess_fn=logger.info_logger.preprocess_fn,
     )
 
-    train_collector.collect(n_step=10000, random=True)
+    # Collect samples to fill the buffer before training
+    train_collector.collect(n_step=cfg.n_steps_before_learning, random=True)
 
-    result = ts.trainer.offpolicy_trainer(
-        policy,
-        train_collector,
-        test_collector,
-        max_epoch=max_epoch,
-        step_per_epoch=step_per_epoch,
-        step_per_collect=1,
-        update_per_step=1,
-        episode_per_test=10,
-        batch_size=64,
-        train_fn=lambda epoch, env_step: policy.set_eps(decay_eps(epoch, env_step)),
+    # Set the exploration schedule
+    epsilon_scheduler = hydra.utils.instantiate(cfg.exploration)
+
+    # Train the model
+    result = hydra.utils.call(
+        cfg.trainer,
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        train_fn=lambda epoch, env_step: policy.set_eps(
+            epsilon_scheduler.current_eps(epoch, env_step)
+        ),
         test_fn=lambda epoch, env_step: policy.set_eps(0.00),
         logger=logger,
-        verbose=False,
     )
-    print(f'Finished training! Use {result["duration"]}')
+
+    print(f'Finished training in {result["duration"]}')
     logger.close()
 
 
