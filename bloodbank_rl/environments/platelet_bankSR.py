@@ -34,6 +34,7 @@ class PlateletBankGym(gym.Env):
         wastage_cost,
         render_env=False,
         seed=None,
+        seed_demand=True
     ):
         self.demand_provider = demand_provider_class(**demand_provider_kwargs)
         self.max_order = max_order
@@ -61,6 +62,12 @@ class PlateletBankGym(gym.Env):
         self.wastage_cost = wastage_cost
 
         self.render_env = render_env
+
+        # If seed_demand is true, seed provided to env will be used to seed both the env and the demand provider
+        # Even if a seed is provided in demand_provider_kwargs - print message to make this clear
+        self.seed_demand = seed_demand
+        if self.seed_demand and 'seed' in demand_provider_kwargs.keys():
+            print('Seed for environment will be used for demand provider instead of seed in demand_provider_kwargs because seed_demand is True.')
 
         # Set random seed value
         self.seed_value = self.seed(seed)
@@ -94,6 +101,10 @@ class PlateletBankGym(gym.Env):
     def seed(self, seed=None):
 
         self.np_rng = np.random.default_rng(seed)
+        
+        if self.seed_demand:
+            self.demand_provider.np_rng = np.random.default_rng(seed)
+        
         seed_value = self.np_rng.bit_generator._seed_seq.entropy
 
         return [seed_value]
