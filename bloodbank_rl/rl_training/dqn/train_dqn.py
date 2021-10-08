@@ -94,10 +94,6 @@ def main(cfg):
 
     # Additional logging
     logger.experiment.log_artifacts(logger.run_id, cfg.hydra_logdir)
-    # if logger.model_checkpoints:
-    #    logger.experiment.log_artifacts(
-    #        logger.run_id, logger.cp_path, artifact_path="model_checkpoints"
-    #    )
 
     print(f'Finished training in {result["duration"]}')
     logger.close()
