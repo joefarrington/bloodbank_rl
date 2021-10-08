@@ -26,7 +26,6 @@ vec_env:
 model:
   _target_: bloodbank_rl.tianshou_utils.models.FCDQN
   n_hidden: [128,128,128]
-  device: ${device}
 optimiser:
   _target_: torch.optim.Adam
   lr: 1e-5
