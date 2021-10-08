@@ -7,7 +7,7 @@ import torch
 from torch import nn
 import mlflow
 
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import Net, ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic
 
 from omegaconf import DictConfig, OmegaConf
@@ -69,7 +69,7 @@ def main(cfg):
     critic = Critic(net_c, device=cfg.device).to(cfg.device)
 
     optim = hydra.utils.instantiate(
-        cfg.optimiser, params=list(actor.parameters()) + list(critic.parameters())
+        cfg.optimiser, params=ActorCritic(actor, critic).parameters()
     )
 
     policy = hydra.utils.instantiate(
