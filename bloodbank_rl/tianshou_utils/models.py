@@ -2,8 +2,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+
 class FCDQN(nn.Module):
-    def __init__(self, state_shape, action_shape, n_hidden, device="cpu"):
+    def __init__(self, state_shape, action_shape, n_hidden):
         """Instantiate a fully connected network
 
         Args:
@@ -14,7 +15,6 @@ class FCDQN(nn.Module):
         """
 
         super(FCDQN, self).__init__()
-        self.device = device
 
         layers = [nn.Linear(np.prod(state_shape), n_hidden[0]), nn.ReLU(inplace=True)]
 
@@ -32,3 +32,8 @@ class FCDQN(nn.Module):
         batch = obs.shape[0]
         logits = self.model(obs.view(batch, -1))
         return logits, state
+
+    @property
+    def device(self):
+        """Return the device the model is on"""
+        return next(self.parameters()).device
