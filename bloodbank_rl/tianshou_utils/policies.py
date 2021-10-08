@@ -16,4 +16,4 @@ class A2CPolicyforMLFlow(A2CPolicy):
         output_loss_dict["loss_component/actor"] = loss_dict["loss/actor"]
         output_loss_dict["loss_component/vf"] = loss_dict["loss/vf"]
         output_loss_dict["loss_component/ent"] = loss_dict["loss/ent"]
-        return loss_dict
+        return output_loss_dict
