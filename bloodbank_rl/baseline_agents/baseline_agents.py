@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.stats import mode, poisson, norm
+import torch
+import tianshou as ts
 
 # We want a general agent class that we can then subclass to create agents that will take
 # steps using different heuristics
@@ -166,6 +168,29 @@ class SBAgent(Agent):
         return action
 
 
+# Agent that takes a Tianshou policy
+# Use for evaluation after training
+# in a way compatible with other models
+class TSAgent(Agent):
+    def __init__(self, policy, env, seed):
+        super().__init__(env, seed)
+        self.policy = policy
+
+    def _select_action(self):
+        with torch.no_grad():
+            batch = ts.data.Batch(
+                obs=self.state.reshape(1, -1),
+                act={},
+                done={},
+                obs_next={},
+                info={},
+                policy={},
+            )
+            action = self.policy(batch)["act"][0]
+
+        return action
+
+
 # For now, we assume one value per weekday
 # and that Poisson distributed
 # TODO: pull these from the env
@@ -196,12 +221,7 @@ class Agent_servicelevel(Agent):
 
 class Agent_servicelevelNormal(Agent):
     def __init__(
-        self,
-        mean_daily_demands,
-        std_daily_demands,
-        minimum_service_level,
-        env,
-        seed,
+        self, mean_daily_demands, std_daily_demands, minimum_service_level, env, seed,
     ):
         super().__init__(env, seed)
 
@@ -215,11 +235,7 @@ class Agent_servicelevelNormal(Agent):
         # Take the ceiling when generating from continuous distribution
         # CRound  as expected by action space of env
         self.S_high_parameters = np.ceil(
-            norm.ppf(
-                minimum_service_level,
-                next_day_mean_demand,
-                next_day_std_demand,
-            )
+            norm.ppf(minimum_service_level, next_day_mean_demand, next_day_std_demand,)
         ).astype(int)
         print(self.S_high_parameters)
 
