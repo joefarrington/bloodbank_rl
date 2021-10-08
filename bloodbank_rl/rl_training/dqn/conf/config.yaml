@@ -9,6 +9,7 @@ env:
   demand_provider: 
     _target_: bloodbank_rl.environments.platelet_bankSR.PoissonDemandProviderSR
     sim_duration: 365
+    one_hot_encode_weekday: True
   max_order: 60
   max_shelf_life: 3
   lead_time: 0
