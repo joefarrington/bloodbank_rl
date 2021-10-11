@@ -1,7 +1,7 @@
 #! /bin/bash -l
 
 #$ -N pyomo_stochastic_sSaQ
-#$ -l h_rt=36:30:00
+#$ -l h_rt=38:00:00
 #$ -l mem=4G
 #$ -pe smp 8
 #$ -cwd
