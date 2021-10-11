@@ -39,7 +39,7 @@ optimiser:
   alpha: 0.99
 policy:
   _target_: bloodbank_rl.tianshou_utils.policies.A2CPolicyforMLFlow
-  discount_factor: 0.9
+  discount_factor: 0.75
   max_grad_norm: 0.5
   deterministic_eval: True
   reward_normalization: True
