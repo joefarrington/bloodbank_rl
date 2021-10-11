@@ -20,16 +20,16 @@ env:
   wastage_cost: 650
 vec_env:
   n_train_envs: 3
-  train_env_seed: 11
+  train_env_seed: [15, 16, 17]
   n_test_envs: 1
   test_env_seed: 12
 actor_network:
   _target_: tianshou.utils.net.common.Net
-  hidden_sizes: [128, 128]
+  hidden_sizes: [128, 128, 128]
   device: ${device}
 critic_network:
   _target_: tianshou.utils.net.common.Net
-  hidden_sizes: [128, 128]
+  hidden_sizes: [128, 128, 128]
   device: ${device}
 optimiser:
   _target_: torch.optim.RMSprop
@@ -38,8 +38,10 @@ optimiser:
   alpha: 0.99
 policy:
   _target_: bloodbank_rl.tianshou_utils.policies.A2CPolicyforMLFlow
-  discount_factor: 0.75
+  discount_factor: 0.9
   max_grad_norm: 0.5
+  deterministic_eval: True
+  reward_normalization: True
 train_collector:
   _target_: tianshou.data.Collector
   buffer:
@@ -63,7 +65,7 @@ trainer:
   max_epoch: 100
   step_per_epoch: 5000
   repeat_per_collect: 1
-  episode_per_test: 100
+  episode_per_test: 10
   batch_size: 9999
   step_per_collect: 15
   test_in_train: False
