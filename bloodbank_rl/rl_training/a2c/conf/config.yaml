@@ -43,7 +43,7 @@ policy:
   max_grad_norm: 0.5
   deterministic_eval: True
   reward_normalization: True
-  ent_coef: 0.1
+  ent_coef: 1
 train_collector:
   _target_: tianshou.data.Collector
   buffer:
