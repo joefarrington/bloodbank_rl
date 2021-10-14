@@ -34,6 +34,7 @@ class PlateletBankGym(gym.Env):
         render_env=False,
         seed=None,
         seed_demand=True,
+        include_timelimit_info=True,
     ):
         self.demand_provider = demand_provider
         self.max_order = max_order
@@ -75,6 +76,12 @@ class PlateletBankGym(gym.Env):
 
         # Set up the action and observation space
         self._setup_spaces()
+
+        # Whether to include info dict element as in gym.wrapper.TimeLimit
+        # This would indictate to libraries like Tianshou that termination
+        # due to time limit which is the case because we've set an artificial
+        # limit on the length of the simulations
+        self.include_time_limit_info = include_timelimit_info
 
         self.reset()
 
@@ -157,10 +164,6 @@ class PlateletBankGym(gym.Env):
         # Get the new observation
         observation = self._get_observation()
 
-        # Determine if simulation finised to report in output tuple as
-        # expected for Gym environments
-        terminal = True if self.timestep >= self.demand_provider.sim_duration else False
-
         # Return relevant information for debugging, some duplication
         # for easier post-processing
         info = {
@@ -173,6 +176,17 @@ class PlateletBankGym(gym.Env):
             "units_received_by_age": units_received_by_age,
             "observation": observation,
         }
+
+        # Indicate that end of episode due to artificial timelimit if we are including this information
+        if (
+            self.include_time_limit_info
+            and self.timestep >= self.demand_provider.sim_duration
+        ):
+            info["TimeLimit.truncated"] = True
+
+        # Determine if simulation finised to report in output tuple as
+        # expected for Gym environments
+        terminal = True if self.timestep >= self.demand_provider.sim_duration else False
 
         if self.render_env:
             self.render()
