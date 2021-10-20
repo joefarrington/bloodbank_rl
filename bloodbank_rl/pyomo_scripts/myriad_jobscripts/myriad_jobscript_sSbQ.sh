@@ -8,4 +8,4 @@
 
 conda activate optim && echo 'Conda environment activated' || echo 'Activating conda environment failed'
 module load gurobi/8.1.1 && echo 'Gurobi loaded' || echo 'Loading Gurobi failed'
-python3 run_pyomo_smilp.py model_constructor=sSbQ_PyomoModelConstructor n_scenarios=20 model_constructor_params.M = 125 +solver_options.TimeLimit=129600 model_constructor_params.weekly_policy=False log_folder_name=sSbQ_non_weekly
+python3 run_pyomo_smilp.py model_constructor=sSbQ_PyomoModelConstructor n_scenarios=20 model_constructor_params.M=125 +solver_options.TimeLimit=129600 model_constructor_params.weekly_policy=False log_folder_name=sSbQ_non_weekly
