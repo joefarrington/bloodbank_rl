@@ -35,7 +35,7 @@ policy:
   discount_factor: 0.75
   estimation_step: 1
   target_update_freq: 1000
-  is_double: False
+  is_double: True
 train_collector:
   _target_: tianshou.data.Collector
   buffer:
@@ -50,18 +50,21 @@ logger:
   _target_: bloodbank_rl.tianshou_utils.logging.TianshouMLFlowLogger
   filename: train_dqn.py
   experiment_name: dqn_tianshou
+  save_interval: ${checkpoints.training_checkpoint_interval}
   info_logger:
     _target_: bloodbank_rl.tianshou_utils.logging.InfoLogger
-  model_checkpoints: True
-  cp_path: ${hydra:output_subdir}/model_checkpoints
+checkpoints:
+  save_checkpoints: True
+  path: ./tmp_logs/model_checkpoints/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  training_checkpoint_interval: 1
 n_steps_before_learning: 10000
 trainer:
   _target_: tianshou.trainer.offpolicy_trainer
-  max_epoch: 200
-  step_per_epoch: 5000
+  max_epoch: 50
+  step_per_epoch: 10000
   step_per_collect: 1
   update_per_step: 1
-  episode_per_test: 100
+  episode_per_test: 20
   batch_size: 64
   verbose: False
 exploration:

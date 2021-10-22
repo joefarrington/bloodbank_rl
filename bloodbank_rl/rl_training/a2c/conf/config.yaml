@@ -40,10 +40,11 @@ optimiser:
 policy:
   _target_: bloodbank_rl.tianshou_utils.policies.A2CPolicyforMLFlow
   discount_factor: 0.75
+  gae_lambda: 0.5
   max_grad_norm: 0.5
   deterministic_eval: True
   reward_normalization: True
-  ent_coef: 10
+  ent_coef: 0.01
 train_collector:
   _target_: tianshou.data.Collector
   buffer:
@@ -60,14 +61,16 @@ logger:
   experiment_name: a2c_tianshou
   info_logger:
     _target_: bloodbank_rl.tianshou_utils.logging.InfoLogger
-  model_checkpoints: True
-  cp_path: ${hydra:output_subdir}/model_checkpoints
+checkpoints:
+  save_checkpoints: True
+  path: ./tmp_logs/model_checkpoints/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  training_checkpoint_interval: 1
 trainer:
   _target_: tianshou.trainer.onpolicy_trainer
-  max_epoch: 100
-  step_per_epoch: 5000
+  max_epoch: 50
+  step_per_epoch: 10000
   repeat_per_collect: 1
-  episode_per_test: 10
+  episode_per_test: 100
   batch_size: 9999
   step_per_collect: 15
   test_in_train: False

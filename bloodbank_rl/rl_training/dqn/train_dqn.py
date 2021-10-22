@@ -5,6 +5,8 @@ import numpy as np
 import gym
 import torch
 import mlflow
+from pathlib import Path
+from datetime import datetime
 
 from omegaconf import DictConfig, OmegaConf
 import hydra
@@ -59,9 +61,41 @@ def main(cfg):
 
     policy = hydra.utils.instantiate(cfg.policy, model=net, optim=optim)
 
-    logger = hydra.utils.instantiate(cfg.logger, policy=policy)
+    logger = hydra.utils.instantiate(cfg.logger)
     conf_dict = OmegaConf.to_container(cfg, resolve=True)
     logger.log_hyperparameters(conf_dict)
+
+    # Log Hydra config files as artifacts for easy replication
+    logger.experiment.log_artifacts(logger.run_id, cfg.hydra_logdir)
+
+    # Set up checkpointing if needed
+    if cfg.checkpoints.save_checkpoints:
+        cp_path = Path(cfg.checkpoints.path)
+        cp_path.mkdir(parents=True, exist_ok=True)
+
+        best_models_path = cp_path / "best_models"
+        best_models_path.mkdir(parents=True, exist_ok=True)
+
+        # Runs when we have a new best mean evaluation reward
+        def save_fn(policy, cp_path=cp_path, mlflow_logger=logger):
+            now_time = datetime.strftime(datetime.now(), "%H-%M-%S")
+            model_checkpoint_path = cp_path / f"best_models/policy_{now_time}.pt"
+            torch.save(policy.state_dict(), model_checkpoint_path)
+            mlflow_logger.experiment.log_artifact(
+                mlflow_logger.run_id, model_checkpoint_path, "best_models"
+            )
+
+        # Runs at frequency based on save_interval argument to logger
+        def save_checkpoint_fn(epoch, env_step, gradient_step, cp_path=cp_path):
+            checkpoint_dir = cp_path / f"epoch_{epoch:04}"
+            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+            checkpoint_filepath = checkpoint_dir / "policy.pt"
+            torch.save({"model": policy.state_dict()}, checkpoint_filepath)
+            return checkpoint_filepath
+
+    else:
+        save_fn = None
+        save_checkpoint_fn = None
 
     train_collector = hydra.utils.instantiate(
         cfg.train_collector, policy=policy, env=train_envs
@@ -90,10 +124,9 @@ def main(cfg):
         ),
         test_fn=lambda epoch, env_step: policy.set_eps(0.00),
         logger=logger,
+        save_fn=save_fn,
+        save_checkpoint_fn=save_checkpoint_fn,
     )
-
-    # Additional logging
-    logger.experiment.log_artifacts(logger.run_id, cfg.hydra_logdir)
 
     print(f'Finished training in {result["duration"]}')
     logger.close()

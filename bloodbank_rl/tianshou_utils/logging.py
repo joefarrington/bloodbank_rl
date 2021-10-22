@@ -7,6 +7,7 @@ import numpy as np
 from datetime import datetime
 from pathlib import Path
 import torch
+import yaml
 
 from numbers import Number
 from typing import Callable, Dict, Optional, Tuple, Union
@@ -48,6 +49,7 @@ class TianshouMLFlowLogger(tianshou.utils.BaseLogger):
         train_interval=1000,
         test_interval=1,
         update_interval=1000,
+        save_interval=1,
         experiment_name="Default",
         run_name=None,
         tracking_uri=None,
@@ -57,11 +59,11 @@ class TianshouMLFlowLogger(tianshou.utils.BaseLogger):
         artifact_location=None,
         filename=None,
         info_logger=None,
-        policy=None,
-        model_checkpoints=False,
-        cp_path="",
     ):
         super().__init__(train_interval, test_interval, update_interval)
+        self.last_save_step = -1
+        self.save_interval = save_interval
+
         if not tracking_uri:
             tracking_uri = f"{LOCAL_FILE_URI_PREFIX}{save_dir}"
 
@@ -74,19 +76,6 @@ class TianshouMLFlowLogger(tianshou.utils.BaseLogger):
         self._prefix = prefix
         self._artifact_location = artifact_location
         self.info_logger = info_logger
-
-        self.policy = policy
-        self.model_checkpoints = model_checkpoints
-        self.best_test_reward = None
-
-        if self.model_checkpoints:
-            if cp_path is None:
-                now_day = datetime.strftime(datetime.now(), "%Y-%m-%d")
-                now_time = datetime.strftime(datetime.now(), "%H-%M-%S")
-                self.cp_path = Path(f"./model_checkpoints/{now_day}/{now_time}/")
-            else:
-                self.cp_path = Path(cp_path)
-            self.cp_path.mkdir(parents=True, exist_ok=True)
 
         self._mlflow_client = MlflowClient(tracking_uri)
 
@@ -154,10 +143,6 @@ class TianshouMLFlowLogger(tianshou.utils.BaseLogger):
         for k, v in data.items():
             self.experiment.log_metric(self._run_id, k, v, step)
 
-    def close(self) -> None:
-        """"""
-        self.experiment.set_terminated(self._run_id)
-
     def log_test_data(self, collect_result: dict, step: int) -> None:
         """Use writer to log statistics generated during evaluating.
         :param collect_result: a dict containing information of data collected in
@@ -189,15 +174,30 @@ class TianshouMLFlowLogger(tianshou.utils.BaseLogger):
             self.write("test/env_step", step, log_data)
             self.last_log_test_step = step
 
-            if self.model_checkpoints:
-                if self.best_test_reward is None or rew > self.best_test_reward:
-                    self.best_test_reward = rew
-                    torch.save(
-                        self.policy.state_dict(),
-                        self.cp_path.joinpath(
-                            f"step_{step}_rew_{self.best_test_reward}.dat"
-                        ),
-                    )
+    def close(self) -> None:
+        """"""
+        self.experiment.set_terminated(self._run_id)
+
+    def save_data(self, epoch, env_step, gradient_step, save_checkpoint_fn):
+        if save_checkpoint_fn and epoch - self.last_save_step >= self.save_interval:
+            self.last_save_step = epoch
+            checkpoint_path = Path(save_checkpoint_fn(epoch, env_step, gradient_step))
+
+            metadata = {
+                "save/epoch": epoch,
+                "save/env_step": env_step,
+                "save/gradient_step": gradient_step,
+                "checkpoint_path": str(checkpoint_path),
+            }
+
+            metadata_file_path = checkpoint_path.parent / "trainer_metadata.yaml"
+
+            with open(str(metadata_file_path), "w") as f:
+                yaml.dump(metadata, f)
+
+            self.experiment.log_artifact(
+                self.run_id, checkpoint_path.parent, "training_checkpoints"
+            )
 
     @staticmethod
     def _get_mlflow_tags(filename=None, manual_tags=None):
