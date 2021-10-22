@@ -429,6 +429,90 @@ class DFDemandProvider:
             )
 
 
+### Demand provider that provides non-overlapping extracts of pre-generated data for Pyomo
+
+
+class DFPyomoDemandProvider:
+    def __init__(
+        self,
+        df_all,
+        demand_col_name,
+        weekday_col_name,
+        sim_start_weekday=0,  # Monday by default
+        sim_duration=None,
+        seed=0,
+    ):
+        # Reset the index of the df for easier slicing
+        self.df_all = df_all.reset_index(drop=True)[[weekday_col_name, demand_col_name]]
+
+        self.demand_col_name = demand_col_name
+        self.weekday_col_name = weekday_col_name
+        self.sim_start_weekday = sim_start_weekday
+        self.sim_duration = sim_duration
+
+        self.seed_value = self.seed(seed)
+
+        self.additional_observation_dim = 1  # just weekday
+
+        # Index of the first instance of starting weekday (e.g. first Monday)
+        self.first_start_weekday_index = self._calculate_first_start_weekday_index()
+        # Index to start scenario from
+        self.initial_index = self._calculate_initial_index()
+        self.current_index = self.initial_index
+
+    def seed(self, seed):
+
+        # Here seed is not used for random number generator, but
+        # to work out the starting index of the period
+
+        # Makes the results reproducible, and makes this class
+        # compatible with the others
+
+        return [seed]
+
+    def _calculate_first_start_weekday_index(self):
+        first_start_weekday_index = (
+            self.df_all[self.df_all[self.weekday_col_name] == self.sim_start_weekday]
+            .iloc[0:1, :]
+            .index.values[0]
+        )
+        return first_start_weekday_index
+
+    def _calculate_initial_index(self):
+        # Remember to minus 1 because generate demand adds one before giving next demand
+        initial_index = (
+            self.seed_value[0] * (math.ceil(self.sim_duration / 7) * 7)
+            + self.first_start_weekday_index
+            - 1
+        )
+        if initial_index + self.sim_duration > self.df_all.shape[0] - 1:
+            raise ValueError(
+                "Data not available for full scenario, reduce seed or scenario length"
+            )
+        else:
+            return initial_index
+
+    def get_initial_stock(self, max_age, transit_time):
+        # Initial stock is supposed to be a parameter
+        # Need to check exactly what it should be
+        # For now, just assume no stock
+
+        inventory = np.zeros((max_age))
+
+        in_transit = [0] * transit_time
+        return inventory, in_transit
+
+    def generate_demand(self):
+        self.current_index += 1
+        return self.df_all.loc[self.current_index, self.demand_col_name]
+
+    def additional_observation(self):
+        return self.df_all.loc[self.current_index, self.weekday_col_name].values
+
+    def reset(self):
+        self.current_index = self.initial_index
+
+
 # We can use this to change the coefficient of variation.
 # But it can only do an overdispersed Poisson so min cv is
 # say 0.2, so we can't currently do the setting where CV is 0.1
