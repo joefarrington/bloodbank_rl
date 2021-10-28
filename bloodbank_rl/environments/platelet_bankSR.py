@@ -16,6 +16,7 @@ import pandas as pd
 from collections import namedtuple, Counter
 import gym
 import math
+from pathlib import Path
 
 
 class PlateletBankGym(gym.Env):
@@ -442,8 +443,8 @@ class DFPyomoDemandProvider:
         sim_duration=None,
         seed=0,
     ):
-
-        self.df_all = pd.read_csv(filename)
+        filepath = Path(filename).resolve()
+        self.df_all = pd.read_csv(filepath)
         # Reset the index of the df for easier slicing
         self.df_all = self.df_all.reset_index(drop=True)[
             [weekday_col_name, demand_col_name]

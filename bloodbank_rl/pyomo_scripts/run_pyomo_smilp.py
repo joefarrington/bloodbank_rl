@@ -10,7 +10,10 @@ import sys
 path_root = Path(os.path.abspath(__file__)).parents[2]
 sys.path.append(str(path_root))
 
-from bloodbank_rl.environments.platelet_bankSR import PoissonDemandProviderSR
+from bloodbank_rl.environments.platelet_bankSR import (
+    PoissonDemandProviderSR,
+    DFPyomoDemandProvider,
+)
 from bloodbank_rl.pyomo_models.model_constructors import (
     sS_PyomoModelConstructor,
     sQ_PyomoModelConstructor,
@@ -34,6 +37,11 @@ def main(cfg):
     demand_provider = globals()[cfg.demand_provider]
     solver_string = cfg.solver_string
     solver_options = OmegaConf.to_container(cfg.solver_options)
+    scenario_name_start = cfg.scenario_name_start
+    try:
+        demand_provider_kwargs = cfg.demand_provider_kwargs
+    except:
+        demand_provider_kwargs = None
 
     log.info(f"Git revision hash: {get_git_revision_hash()}")
 
@@ -42,6 +50,8 @@ def main(cfg):
         model_constructor_params=model_constructor_params,
         n_scenarios=n_scenarios,
         demand_provider=demand_provider,
+        demand_provider_kwargs=demand_provider_kwargs,
+        scenario_name_start=scenario_name_start,
         solver_string=solver_string,
         solver_options=solver_options,
         log=log,
