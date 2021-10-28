@@ -19,6 +19,7 @@ model_constructor_params:
   additional_fifo_constraints: True
   weekly_policy: False
 demand_provider: PoissonDemandProviderSR
+scenario_name_start: 311
 solver_string: gurobi_persistent
 solver_options:
   LogFile: "gurobi.log"

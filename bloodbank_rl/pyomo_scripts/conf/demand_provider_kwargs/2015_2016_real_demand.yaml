@@ -1,0 +1,5 @@
+filename: ../../../../../data/processed/20211028_2015_2016_plt_demand_for_pyomo.csv
+demand_col_name: demand
+weekday_col_name: weekday
+sim_start_weekday: 0
+sim_duration: 30
