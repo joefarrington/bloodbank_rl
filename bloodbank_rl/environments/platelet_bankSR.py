@@ -435,15 +435,19 @@ class DFDemandProvider:
 class DFPyomoDemandProvider:
     def __init__(
         self,
-        df_all,
+        filename,
         demand_col_name,
         weekday_col_name,
         sim_start_weekday=0,  # Monday by default
         sim_duration=None,
         seed=0,
     ):
+
+        self.df_all = pd.read_csv(filename)
         # Reset the index of the df for easier slicing
-        self.df_all = df_all.reset_index(drop=True)[[weekday_col_name, demand_col_name]]
+        self.df_all = self.df_all.reset_index(drop=True)[
+            [weekday_col_name, demand_col_name]
+        ]
 
         self.demand_col_name = demand_col_name
         self.weekday_col_name = weekday_col_name
@@ -496,6 +500,8 @@ class DFPyomoDemandProvider:
         # Initial stock is supposed to be a parameter
         # Need to check exactly what it should be
         # For now, just assume no stock
+        # Note that this isn't used in Pyomo modelling,
+        # where initial inventory set elsewhere
 
         inventory = np.zeros((max_age))
 

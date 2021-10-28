@@ -23,6 +23,8 @@ class PyomoModelRunner:
         model_constructor_params,
         n_scenarios,
         demand_provider,
+        demand_provider_kwargs=None,
+        scenario_name_start=311,  # Used this as starting seed for Pyomo experiments with sim data
         solver_string="gurobi_persistent",
         solver_options={"LogFile": "gurobi.log", "OutputFlag": 1, "LogToConsole": 0},
         log=None,
@@ -31,17 +33,27 @@ class PyomoModelRunner:
         self.model_constructor_params = model_constructor_params
         self.n_scenarios = n_scenarios
         self.demand_provider = demand_provider
+        self.demand_provider_kwargs = demand_provider_kwargs
+        self.scenario_name_start = scenario_name_start
         self.solver_string = solver_string
         self.solver_options = solver_options
 
-        self.all_scenario_names = [f"{i+310}" for i in range(1, self.n_scenarios + 1)]
+        self.all_scenario_names = [
+            f"{i+self.scenario_name_start}" for i in range(0, self.n_scenarios)
+        ]
 
         self.checks_to_perform = self._determine_checks_to_perform()
 
         self.log = log
 
     def scenario_creator(self, scenario_name):
-        prov = self.demand_provider(seed=int(scenario_name))
+
+        if self.demand_provider_kwargs:
+            prov = self.demand_provider(
+                **self.demand_provider_kwargs, seed=int(scenario_name)
+            )
+        else:
+            prov = self.demand_provider(seed=int(scenario_name))
         prov.reset()
         demand = {
             t: prov.generate_demand()
