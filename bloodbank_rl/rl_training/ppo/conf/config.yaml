@@ -1,24 +1,12 @@
+defaults:
+  - _self_
+  - env: poisson_simulated
 hydra:
   run:
     dir: .
   output_subdir: ./tmp_logs/hydra_output/${now:%Y-%m-%d}/${now:%H-%M-%S}
 hydra_logdir: ${hydra:output_subdir}
 device: cuda
-env:
-  _target_: bloodbank_rl.environments.platelet_bankSR.PlateletBankGym
-  demand_provider: 
-    _target_: bloodbank_rl.environments.platelet_bankSR.PoissonDemandProviderSR
-    sim_duration: 365
-    one_hot_encode_weekday: True
-  max_order: 60
-  max_shelf_life: 3
-  lead_time: 0
-  shelf_life_at_arrival_dist: [0,0,1]
-  fixed_order_cost: 225
-  variable_order_cost: 650
-  holding_cost: 130
-  emergency_procurement_cost: 3250
-  wastage_cost: 650
 vec_env:
   n_train_envs: 5
   train_env_seed: [15, 16, 17, 18, 19]
