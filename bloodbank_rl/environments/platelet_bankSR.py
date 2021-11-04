@@ -364,14 +364,17 @@ class PoissonDemandProviderSR:
 class DFDemandProvider:
     def __init__(
         self,
-        df_all,
+        filename,
         demand_col_name,
         additional_observation_col_names=None,
         sample_sim_duration=None,
         seed=None,
     ):
+
+        filepath = Path(filename).resolve()
+        self.df_all = pd.read_csv(filepath)
         # Reset the index of the df for easier slicing
-        self.df_all = df_all.reset_index(drop=True)
+        self.df_all = self.df_all.reset_index(drop=True)
 
         # If not sampling, simulation uses all rows of df
         # Otherwise, it is the length we sample
