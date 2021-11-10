@@ -19,6 +19,7 @@ from bloodbank_rl.pyomo_models.model_constructors import (
     sQ_PyomoModelConstructor,
     sSaQ_PyomoModelConstructor,
     sSbQ_PyomoModelConstructor,
+    S_PyomoModelConstructor,
 )
 from bloodbank_rl.pyomo_models.stochastic_model_runner import PyomoModelRunner
 

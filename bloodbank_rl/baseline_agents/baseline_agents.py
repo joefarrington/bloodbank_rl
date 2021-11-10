@@ -70,6 +70,19 @@ class Agent_sS(Agent):
             return 0
 
 
+class Agent_S(Agent):
+    def __init__(self, S_high_parameters, env, seed):
+        super().__init__(env, seed)
+        self.S_high_parameters = S_high_parameters
+
+    def _select_action(self):
+        # Observation has weekday as first element, rest is inventory
+        weekday = int(self.state[0])
+        inventory = np.sum(self.state[1:])
+        S_high = self.S_high_parameters[weekday]
+        return max(S_high - inventory, 0)
+
+
 class Agent_sQ(Agent):
     def __init__(self, s_low_parameters, Quantity_parameters, env, seed):
         super().__init__(env, seed)

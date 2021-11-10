@@ -84,6 +84,8 @@ class PyomoModelRunner:
             return [model.s, model.S, model.alpha, model.Q]
         elif self.model_constructor.policy_parameters() == ["s", "S", "beta", "Q"]:
             return [model.s, model.S, model.beta, model.Q]
+        elif self.model_constructor.policy_parameters() == ["S"]:
+            return [model.S]
         else:
             raise ValueError("Policy parameters not recognised")
 
@@ -261,6 +263,8 @@ class PyomoModelRunner:
             return checks_to_run + [self._check_sSaQ]
         elif self.model_constructor.policy_parameters() == ["s", "S", "beta", "Q"]:
             return checks_to_run + [self._check_sSbQ]
+        elif self.model_constructor.policy_parameters() == ["S"]:
+            return checks_to_run + [self._check_S]
         else:
             raise ValueError("Policy parameters not recognised")
 
@@ -366,6 +370,19 @@ class PyomoModelRunner:
                 "check_sS_S_gt_s": S_gt_s,
                 "check_sS_order_quantity_to_params": order_quantity_to_params,
             }
+        )
+
+    def _check_S(self, row):
+
+        if row["inventory position"] < row["S"]:
+            order_quantity_to_params = (
+                row["order quantity"] == row["S"] - row["inventory position"]
+            )
+        else:
+            order_quantity_to_params = row["order quantity"] == 0
+
+        return pd.Series(
+            {"check_S_order_quantity_to_params": order_quantity_to_params,}
         )
 
     def _check_sQ(self, row):

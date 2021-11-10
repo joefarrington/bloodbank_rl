@@ -828,3 +828,80 @@ class sSbQ_PyomoModelConstructor(PyomoModelConstructor):
     @staticmethod
     def policy_parameters():
         return ["s", "S", "beta", "Q"]
+
+
+# Classic base-stock policy, but with one parameter per weekday
+class S_PyomoModelConstructor(PyomoModelConstructor):
+    def _add_specific_variables(self):
+
+        self.model.S = pyo.Var(self.model.T, domain=pyo.NonNegativeReals)
+
+    def _add_specific_constraints(self):
+
+        # Equation 10
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                <= (self.model.S[t] - 1) + self.model.M * (1 - self.model.Delta[t])
+            )
+
+        # Equation 11
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t] >= self.model.S[t] - self.model.M * self.model.Delta[t]
+            )
+
+        # Equation B-2
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.OQ[t]
+                <= (self.model.S[t] - self.model.IP[t])
+                + self.model.M * (1 - self.model.Delta[t])
+            )
+            # Equation B-3
+            self.model.cons.add(
+                self.model.OQ[t]
+                >= (self.model.S[t] - self.model.IP[t])
+                - self.model.M * (1 - self.model.Delta[t])
+            )
+            # Equation B-4
+            self.model.cons.add(self.model.OQ[t] <= self.model.M * self.model.Delta[t])
+
+    def _add_specific_variables_weekly(self):
+        self.model.S = pyo.Var(self.model.Wd, domain=pyo.NonNegativeReals)
+
+    def _add_specific_constraints_weekly(self):
+        # Equation 10
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                <= (self.model.S[(t - 1) % 7] - 1)
+                + self.model.M * (1 - self.model.Delta[t])
+            )
+
+        # Equation 11
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                >= self.model.S[(t - 1) % 7] - self.model.M * self.model.Delta[t]
+            )
+
+        # Equation B-2
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.OQ[t]
+                <= (self.model.S[(t - 1) % 7] - self.model.IP[t])
+                + self.model.M * (1 - self.model.Delta[t])
+            )
+            # Equation B-3
+            self.model.cons.add(
+                self.model.OQ[t]
+                >= (self.model.S[(t - 1) % 7] - self.model.IP[t])
+                - self.model.M * (1 - self.model.Delta[t])
+            )
+            # Equation B-4
+            self.model.cons.add(self.model.OQ[t] <= self.model.M * self.model.Delta[t])
+
+    @staticmethod
+    def policy_parameters():
+        return ["S"]
