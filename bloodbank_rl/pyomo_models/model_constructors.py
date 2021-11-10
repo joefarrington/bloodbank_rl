@@ -1,4 +1,5 @@
 import pyomo.environ as pyo
+import numpy as np
 
 
 class PyomoModelConstructor:
@@ -16,9 +17,20 @@ class PyomoModelConstructor:
         M=100,
         additional_fifo_constraints=True,
         weekly_policy=False,
+        shelf_life_at_arrival_dist=[0, 0, 1],
     ):
 
         self.model = pyo.ConcreteModel()
+
+        # Check that `shelf_life_at_arrival_dist` sums to 1 and had right
+        # number of elements
+        assert (
+            len(shelf_life_at_arrival_dist) == a_max
+        ), "`shelf_life_at_arrival_dist` must have number of elements equal to `a_max`"
+        assert (
+            np.sum(shelf_life_at_arrival_dist) == 1
+        ), "`shelf_life_at_arrival_dist` must sum to 1"
+        self.shelf_life_at_arrival_dist = shelf_life_at_arrival_dist
 
         self.model.T = pyo.RangeSet(1, t_max)
         self.model.A = pyo.RangeSet(1, a_max)
@@ -149,10 +161,31 @@ class PyomoModelConstructor:
                 )
 
         # For the baseline setting, all inventory should have three useful days of live when received
+        # This works fine for the baseline setting, but we do currently get some rounding issues when
+        # moving away from it.
         for t in self.model.T:
             for a in self.model.A:
-                if a != self.model.A[-1]:
+                if t == 1:
+                    pass  # covered in constraint above
+                elif self.shelf_life_at_arrival_dist[a - 1] == 0:
                     self.model.cons.add(self.model.X[t, a] == 0)
+                else:
+                    self.model.cons.add(
+                        self.model.X[t, a]
+                        >= (
+                            self.model.OQ[t - 1]
+                            * self.shelf_life_at_arrival_dist[a - 1]
+                        )
+                        - 0.5
+                    )
+                    self.model.cons.add(
+                        self.model.X[t, a]
+                        <= (
+                            self.model.OQ[t - 1]
+                            * self.shelf_life_at_arrival_dist[a - 1]
+                        )
+                        + 0.5
+                    )
 
         # Equations 7 and 8:
         for t in self.model.T:
