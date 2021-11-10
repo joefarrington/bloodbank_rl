@@ -96,14 +96,6 @@ class PyomoModelConstructor:
             self.model.T, domain=pyo.Binary
         )  # 1 is order placed on day t, 0 otherwise
 
-        # In a weekly policy, have an s for each weekday rather than each timestep
-        if self.weekly_policy:
-            self.model.s = pyo.Var(self.model.Wd, domain=pyo.NonNegativeReals)
-        else:
-            self.model.s = pyo.Var(
-                self.model.T, domain=pyo.NonNegativeReals
-            )  # re-order point
-
         if self.additional_fifo_constraints:
             self.model.binDssR = pyo.Var(
                 self.model.T, self.model.A, domain=pyo.Binary
@@ -210,39 +202,6 @@ class PyomoModelConstructor:
                 )
             )
 
-        # Equations 10 and 11
-        if self.weekly_policy:
-            # Equation 10
-            for t in self.model.T:
-                self.model.cons.add(
-                    self.model.IP[t]
-                    <= (self.model.s[(t - 1) % 7] - 1)
-                    + self.model.M * (1 - self.model.Delta[t])
-                )
-
-            # Equation 11
-            for t in self.model.T:
-                self.model.cons.add(
-                    self.model.IP[t]
-                    >= self.model.s[(t - 1) % 7] - self.model.M * self.model.Delta[t]
-                )
-
-        else:
-
-            # Equation 10
-            for t in self.model.T:
-                self.model.cons.add(
-                    self.model.IP[t]
-                    <= (self.model.s[t] - 1) + self.model.M * (1 - self.model.Delta[t])
-                )
-
-            # Equation 11
-            for t in self.model.T:
-                self.model.cons.add(
-                    self.model.IP[t]
-                    >= self.model.s[t] - self.model.M * self.model.Delta[t]
-                )
-
         # Equation 16
         # Paper says this should be in all, but no S for s,Q model, so specify where required
 
@@ -305,9 +264,26 @@ class PyomoModelConstructor:
 class sS_PyomoModelConstructor(PyomoModelConstructor):
     def _add_specific_variables(self):
 
+        self.model.s = pyo.Var(
+            self.model.T, domain=pyo.NonNegativeReals
+        )  # re-order point
+
         self.model.S = pyo.Var(self.model.T, domain=pyo.NonNegativeReals)
 
     def _add_specific_constraints(self):
+
+        # Equation 10
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                <= (self.model.s[t] - 1) + self.model.M * (1 - self.model.Delta[t])
+            )
+
+        # Equation 11
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t] >= self.model.s[t] - self.model.M * self.model.Delta[t]
+            )
 
         # Equation 16
         for t in self.model.T:
@@ -330,9 +306,25 @@ class sS_PyomoModelConstructor(PyomoModelConstructor):
             self.model.cons.add(self.model.OQ[t] <= self.model.M * self.model.Delta[t])
 
     def _add_specific_variables_weekly(self):
+        self.model.s = pyo.Var(self.model.Wd, domain=pyo.NonNegativeReals)
         self.model.S = pyo.Var(self.model.Wd, domain=pyo.NonNegativeReals)
 
     def _add_specific_constraints_weekly(self):
+        # Equation 10
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                <= (self.model.s[(t - 1) % 7] - 1)
+                + self.model.M * (1 - self.model.Delta[t])
+            )
+
+        # Equation 11
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                >= self.model.s[(t - 1) % 7] - self.model.M * self.model.Delta[t]
+            )
+
         # Equation 16, but taking into account
         # that each weekday should have its own parameter
         for w in self.model.Wd:
@@ -362,6 +354,10 @@ class sS_PyomoModelConstructor(PyomoModelConstructor):
 class sQ_PyomoModelConstructor(PyomoModelConstructor):
     def _add_specific_variables(self):
 
+        self.model.s = pyo.Var(
+            self.model.T, domain=pyo.NonNegativeReals
+        )  # re-order point
+
         self.model.Q = pyo.Var(
             self.model.T, domain=pyo.NonNegativeReals
         )  # order-up to level
@@ -369,6 +365,18 @@ class sQ_PyomoModelConstructor(PyomoModelConstructor):
     def _add_specific_constraints(self):
 
         # Constraints for s, Q model
+        # Equation 10
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                <= (self.model.s[t] - 1) + self.model.M * (1 - self.model.Delta[t])
+            )
+
+        # Equation 11
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t] >= self.model.s[t] - self.model.M * self.model.Delta[t]
+            )
 
         # Constraint C-2
         for t in self.model.T:
@@ -389,12 +397,28 @@ class sQ_PyomoModelConstructor(PyomoModelConstructor):
             self.model.cons.add(self.model.OQ[t] <= self.model.M * self.model.Delta[t])
 
     def _add_specific_variables_weekly(self):
+        self.model.s = pyo.Var(self.model.Wd, domain=pyo.NonNegativeReals)
         self.model.Q = pyo.Var(
             self.model.Wd, domain=pyo.NonNegativeReals
         )  # order-up to level
 
     def _add_specific_constraints_weekly(self):
         # Constraints for s, Q model
+
+        # Equation 10
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                <= (self.model.s[(t - 1) % 7] - 1)
+                + self.model.M * (1 - self.model.Delta[t])
+            )
+
+        # Equation 11
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                >= self.model.s[(t - 1) % 7] - self.model.M * self.model.Delta[t]
+            )
 
         # Constraint C-2
         for t in self.model.T:
@@ -422,6 +446,10 @@ class sQ_PyomoModelConstructor(PyomoModelConstructor):
 class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
     def _add_specific_variables(self):
 
+        self.model.s = pyo.Var(
+            self.model.T, domain=pyo.NonNegativeReals
+        )  # re-order point
+
         self.model.S = pyo.Var(self.model.T, domain=pyo.NonNegativeReals)
         self.model.Q = pyo.Var(
             self.model.T, domain=pyo.NonNegativeReals
@@ -432,6 +460,19 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
         )  # 1 if IP_t is less than a, 0 otherwise
 
     def _add_specific_constraints(self):
+
+        # Equation 10
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                <= (self.model.s[t] - 1) + self.model.M * (1 - self.model.Delta[t])
+            )
+
+        # Equation 11
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t] >= self.model.s[t] - self.model.M * self.model.Delta[t]
+            )
 
         # Equation 12
         for t in self.model.T:
@@ -498,7 +539,7 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
             self.model.cons.add(self.model.S[t] >= self.model.s[t] + 1)
 
     def _add_specific_variables_weekly(self):
-
+        self.model.s = pyo.Var(self.model.Wd, domain=pyo.NonNegativeReals)
         self.model.S = pyo.Var(self.model.Wd, domain=pyo.NonNegativeReals)
         self.model.Q = pyo.Var(
             self.model.Wd, domain=pyo.NonNegativeReals
@@ -509,6 +550,21 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
         )  # 1 if IP_t is less than a, 0 otherwise
 
     def _add_specific_constraints_weekly(self):
+
+        # Equation 10
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                <= (self.model.s[(t - 1) % 7] - 1)
+                + self.model.M * (1 - self.model.Delta[t])
+            )
+
+        # Equation 11
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                >= self.model.s[(t - 1) % 7] - self.model.M * self.model.Delta[t]
+            )
 
         # Equation 12
         for t in self.model.T:
@@ -583,6 +639,11 @@ class sSaQ_PyomoModelConstructor(PyomoModelConstructor):
 
 class sSbQ_PyomoModelConstructor(PyomoModelConstructor):
     def _add_specific_variables(self):
+
+        self.model.s = pyo.Var(
+            self.model.T, domain=pyo.NonNegativeReals
+        )  # re-order point
+
         self.model.S = pyo.Var(self.model.T, domain=pyo.NonNegativeReals)
         self.model.Q = pyo.Var(
             self.model.T, domain=pyo.NonNegativeReals
@@ -593,6 +654,19 @@ class sSbQ_PyomoModelConstructor(PyomoModelConstructor):
         )  # 1 if IP_t is less than beta, 0 otherwise
 
     def _add_specific_constraints(self):
+
+        # Equation 10
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                <= (self.model.s[t] - 1) + self.model.M * (1 - self.model.Delta[t])
+            )
+
+        # Equation 11
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t] >= self.model.s[t] - self.model.M * self.model.Delta[t]
+            )
 
         # Equation 16
         for t in self.model.T:
@@ -658,6 +732,7 @@ class sSbQ_PyomoModelConstructor(PyomoModelConstructor):
             self.model.cons.add(self.model.s[t] >= self.model.beta[t] + 1)
 
     def _add_specific_variables_weekly(self):
+        self.model.s = pyo.Var(self.model.Wd, domain=pyo.NonNegativeReals)
         self.model.S = pyo.Var(self.model.Wd, domain=pyo.NonNegativeReals)
         self.model.Q = pyo.Var(
             self.model.Wd, domain=pyo.NonNegativeReals
@@ -668,6 +743,21 @@ class sSbQ_PyomoModelConstructor(PyomoModelConstructor):
         )  # 1 if IP_t is less than b, 0 otherwise
 
     def _add_specific_constraints_weekly(self):
+
+        # Equation 10
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                <= (self.model.s[(t - 1) % 7] - 1)
+                + self.model.M * (1 - self.model.Delta[t])
+            )
+
+        # Equation 11
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                >= self.model.s[(t - 1) % 7] - self.model.M * self.model.Delta[t]
+            )
 
         # Equation 16, but taking into account
         # that each weekday should have its own parameter
