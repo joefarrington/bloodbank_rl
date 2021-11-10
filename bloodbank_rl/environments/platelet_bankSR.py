@@ -36,11 +36,17 @@ class PlateletBankGym(gym.Env):
         seed=None,
         seed_demand=True,
         include_timelimit_info=True,
+        stock_age_in_state=True,
     ):
         self.demand_provider = demand_provider
         self.max_order = max_order
         self.max_shelf_life = max_shelf_life
         self.lead_time = lead_time
+
+        # Report stock by age, or just one number
+        # Remember that if lead time is not 0 this won't be able to tell the difference
+        # between items in stock and items ordered but not yet received
+        self.stock_age_in_state = stock_age_in_state
 
         # Probability that newly arrived unit has shelf life between 1 and max_shelf_life
         # Should have number of elements equal to max_shelf_life
@@ -128,9 +134,15 @@ class PlateletBankGym(gym.Env):
         # Observation space is slots for (max_inv_slots - 1) lots of inventory
         # and then additional slots that may be supplier by the demand provider
         # TODO: This could be more precise about min and max for different elements of obs
-        obs_dim = (
-            self.max_inv_slots - 1 + self.demand_provider.additional_observation_dim
-        )
+        if self.stock_age_in_state:
+            obs_dim = (
+                self.max_inv_slots - 1 + self.demand_provider.additional_observation_dim
+            )
+        else:
+            obs_inv_dim = (
+                1 if self.lead_time == 0 else 2
+            )  # Will only observe stock in transit if lead time > 0
+            obs_dim = obs_inv_dim + self.demand_provider.additional_observation_dim
         self.observation_space = gym.spaces.Box(low=0, high=500, shape=(obs_dim,))
 
     def step(self, action):
@@ -239,8 +251,18 @@ class PlateletBankGym(gym.Env):
         # Could be more complex as part of more detailed simulation
         additional_obs = self.demand_provider.additional_observation()
 
-        # At point where observation made, stock has been aged so none with 3 days of useful life
-        stock_position = np.hstack((self.inventory[:-1], self.in_transit))
+        # If we don't want stock age in state, add it up and return single number in numpy array
+        if self.stock_age_in_state:
+            # At point where observation made, stock has been aged so none with 3 days of useful life
+            stock_position = np.hstack((self.inventory[:-1], self.in_transit))
+        elif (
+            self.lead_time > 0
+        ):  # If there's lead time, want obs to include stock on order not yet received
+            stock_position = np.array(
+                [np.sum(self.inventory[:-1]), np.sum(self.in_transit)]
+            )
+        else:
+            stock_position = np.array(np.sum(self.inventory[:-1]))
 
         if additional_obs is None:
             return stock_position.astype(int)
