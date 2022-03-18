@@ -1,0 +1,5 @@
+# @package _global_
+
+max_demands: [60,60,60,60,60,60,60]
+max_order: 60
+max_iterations: 35
