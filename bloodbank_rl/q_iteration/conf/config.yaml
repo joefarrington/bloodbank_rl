@@ -1,8 +1,8 @@
 min_demands: [0,0,0,0,0,0,0]
-max_demands: [70,70,70,70,70,70,70]
+max_demands: [60,60,60,60,60,60,60]
 mean_demands: [37.3, 39.2, 37.8, 40.5, 27.2, 28.4, 37.5]
-gamma: 0.99
-max_order: 70
+gamma: 1.0
+max_order: 60
 shelf_life_at_arrival_dist: [0, 0, 1]
 cost_dict:
   fixed_order_cost: 225
@@ -10,6 +10,5 @@ cost_dict:
   holding_cost: 130
   emergency_procurement_cost: 3250
   wastage_cost: 650
-max_iterations: 10
-q_max_abs_diff: 1
-save_qvalues_each_iteration: False
+max_iterations: 20
+save_qvalues_each_iteration: True

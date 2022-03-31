@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import dask.dataframe as dd
 from scipy.stats import poisson
 from joblib import Parallel, delayed
 import pickle
@@ -11,9 +10,6 @@ import logging
 from omegaconf import DictConfig, OmegaConf
 import hydra
 
-# min_demands = [0] * 7
-# max_demands = [70] * 7
-# mean_demands = [37.3, 39.2, 37.8, 40.5, 27.2, 28.4, 37.5]
 weekdays = {
     0: "monday",
     1: "tuesday",
@@ -23,17 +19,6 @@ weekdays = {
     5: "saturday",
     6: "sunday",
 }
-# gamma = 0.99
-# max_order = 70
-# shelf_life_at_arrival_dist = [0.5, 0.2, 0.3]
-
-# cost_dict = {
-#    "fixed_order_cost": 225,
-#    "variable_order_cost": 650,
-#    "holding_cost": 130,
-#    "emergency_procurement_cost": 3250,
-#    "wastage_cost": 650,
-# }
 
 # Enable logging
 log = logging.getLogger(__name__)
@@ -152,6 +137,55 @@ def q_iteration_step(
     return new_qs
 
 
+# Functions to support loop convergence check
+
+
+def calculate_unique_q_deltas(q_values_new, q_values_old):
+    temp = (q_values_new - q_values_old).round(0)
+    temp = temp.reset_index()
+    temp["weekday"] = temp["index"].apply(lambda x: eval(x)[0])
+    temp = temp.drop("index", axis=1)
+    unique_q_deltas = temp.groupby("weekday").apply(
+        lambda x: np.unique(x.drop("weekday", axis=1))
+    )
+    return unique_q_deltas
+
+
+def update_q_delta_df(q_delta_df, unique_q_deltas, iteration, period=7, gamma=0.99):
+    n_unique_q_deltas = sum([len(x) for x in unique_q_deltas])
+    print(n_unique_q_deltas)
+
+    if n_unique_q_deltas == period and q_delta_df.shape[0] > 0:
+        row = [x[0] for x in unique_q_deltas]
+        estimated_delta = np.roll(
+            [np.round(x * gamma) for x in q_delta_df.iloc[-1, :]], -1
+        )
+        if np.allclose(row, estimated_delta, rtol=5):
+            q_delta_df.loc[iteration, :] = row
+        else:
+
+            # If not consistent, not in loop, so reset df
+            q_delta_df = pd.DataFrame(columns=list(range(period)))
+    elif n_unique_q_deltas == period:
+        # Can't check consistency if this is first one, so just add
+        row = [x[0] for x in unique_q_deltas]
+        q_delta_df.loc[iteration, :] = row
+    else:
+        # If not same number of entries as period, not in loop so reset df
+        q_delta_df = pd.DataFrame(columns=list(range(period)))
+    return q_delta_df
+
+
+def period_convergence_test(q_delta_df, period=7, gamma=0.99):
+    if q_delta_df.shape[0] == period + 1:
+        top_row = q_delta_df.iloc[0, :]
+        discounted_top_row = [x for x in top_row * gamma ** period]
+        bottom_row = [x for x in q_delta_df.iloc[-1, :]]
+        return np.allclose(discounted_top_row, bottom_row, rtol=5)
+    else:
+        return False
+
+
 @hydra.main(config_path="conf", config_name="config")
 def main(cfg):
 
@@ -194,6 +228,8 @@ def main(cfg):
         iteration_qvalues_path.mkdir(parents=True, exist_ok=True)
 
     # Run Q-iteration
+    period = len(cfg.mean_demands)
+    q_delta_df = pd.DataFrame(columns=list(range(period)))
 
     with Parallel(n_jobs=-1) as parallel:
         for i in range(cfg.max_iterations):
@@ -225,16 +261,23 @@ def main(cfg):
                 f"iteration {i} done, max diff {q_max_abs_diff}, % actions changed {prop_actions_change}"
             )
 
+            # New convergence check based on cycle
+            unique_q_deltas = calculate_unique_q_deltas(q_values, q_values_old)
+            q_delta_df = update_q_delta_df(
+                q_delta_df, unique_q_deltas, iteration=i, period=period, gamma=cfg.gamma
+            )
+            conv_test = period_convergence_test(
+                q_delta_df, period=period, gamma=cfg.gamma
+            )
+            if conv_test:
+                log.info(f"Period convergence test met on iteration {i}")
+                break
             # If flag is True, save the q_values at the end of each iteration
             if cfg.save_qvalues_each_iteration:
                 p = iteration_qvalues_path / f"q_values_{i}.pkl"
 
                 with p.open(mode="wb") as fp:
                     pickle.dump(q_values, fp)
-
-            if q_max_abs_diff < cfg.q_max_abs_diff:
-                log.info(f"converged at iteration{i}")
-                break
 
     # Process and save the results
 
@@ -245,10 +288,6 @@ def main(cfg):
     best_action["weekday"] = best_action["index"].apply(lambda x: eval(x)[0])
     best_action["1day"] = best_action["index"].apply(lambda x: eval(x)[1])
     best_action["2day"] = best_action["index"].apply(lambda x: eval(x)[2])
-
-    best_action[best_action["weekday"] == 0].pivot(
-        index="1day", columns="2day", values=0
-    )
 
     for key, value in weekdays.items():
         output = best_action[best_action["weekday"] == key].pivot(
