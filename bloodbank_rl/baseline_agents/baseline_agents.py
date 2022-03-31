@@ -199,7 +199,7 @@ class TSAgent(Agent):
                 info={},
                 policy={},
             )
-            action = self.policy(batch)["act"][0]
+            action = torch.argmax(self.policy(batch)["logits"]).item()
 
         return action
 
@@ -259,3 +259,18 @@ class Agent_servicelevelNormal(Agent):
         S_high = self.S_high_parameters[weekday]
 
         return max(S_high - inventory, 0)
+
+
+class Agent_lookuptable(Agent):
+    def __init__(self, best_action_dict, env, seed):
+        super().__init__(env, seed)
+        # Load in a dictionary where keys are the state as a string
+        # and values are the action to take
+        # This allows us to easily implement to polocy learned from
+        # Q-iteration, or any arbitrary policy
+        self.best_action_dict = best_action_dict
+
+    def _select_action(self):
+        # Select best action using dict
+        state_string = str(list(self.state))
+        return self.best_action_dict[state_string]
