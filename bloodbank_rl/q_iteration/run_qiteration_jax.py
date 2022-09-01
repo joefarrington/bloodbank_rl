@@ -14,7 +14,7 @@ import hydra
 # Likely possible to make more efficient
 # In particular, expect there is a more effective (and more principled) way of splitting
 # up states, BUT this gives us a huge speed up versus old version : 4s per iteration vesus 20mins before.
-# And that's on CPU. 
+# And that's on CPU.
 
 
 weekdays = {
@@ -190,6 +190,9 @@ def main(cfg):
 
     max_demand = np.array(max_demands).max()
     min_demand = np.array(min_demands).min()
+
+    # Roll demand so that, for example, action at end of Monday followed by Tues demand
+    mean_demands = np.roll(mean_demands, -1)
     demands = jnp.arange(0, max_demand + 1)
     demand_probs = get_demand_probabilities(min_demand, max_demand, mean_demands)
 
@@ -242,7 +245,7 @@ def main(cfg):
         ), "Periodic convergence test currently only implement for undiscounted case"
         assert (
             cfg.save_qvalues_each_iteration
-        ), "Peridic convergence test requires saving Q-values each iteration"
+        ), "Periodic convergence test requires saving Q-values each iteration"
 
     # Run Q-iteration
     period = len(cfg.mean_demands)

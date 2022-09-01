@@ -137,53 +137,20 @@ def q_iteration_step(
     return new_qs
 
 
-# Functions to support loop convergence check
+def period_convergence_test(
+    q_values, iteration, period, epsilon, iteration_qvalues_path
+):
+    p = iteration_qvalues_path / f"q_values_{iteration-period}.pkl"
 
+    with p.open(mode="rb") as fp:
+        q_values_period_start = pickle.load(fp)
 
-def calculate_unique_q_deltas(q_values_new, q_values_old):
-    temp = (q_values_new - q_values_old).round(0)
-    temp = temp.reset_index()
-    temp["weekday"] = temp["index"].apply(lambda x: eval(x)[0])
-    temp = temp.drop("index", axis=1)
-    unique_q_deltas = temp.groupby("weekday").apply(
-        lambda x: np.unique(x.drop("weekday", axis=1))
-    )
-    return unique_q_deltas
+    max_period_diff = np.abs(q_values - q_values_period_start).max().max()
+    min_period_diff = np.abs(q_values - q_values_period_start).min().min()
+    print(f"max_period_diff: {max_period_diff}")
+    print(f"min_period_diff: {min_period_diff}")
 
-
-def update_q_delta_df(q_delta_df, unique_q_deltas, iteration, period=7, gamma=0.99):
-    n_unique_q_deltas = sum([len(x) for x in unique_q_deltas])
-    print(n_unique_q_deltas)
-
-    if n_unique_q_deltas == period and q_delta_df.shape[0] > 0:
-        row = [x[0] for x in unique_q_deltas]
-        estimated_delta = np.roll(
-            [np.round(x * gamma) for x in q_delta_df.iloc[-1, :]], -1
-        )
-        if np.allclose(row, estimated_delta, rtol=5):
-            q_delta_df.loc[iteration, :] = row
-        else:
-
-            # If not consistent, not in loop, so reset df
-            q_delta_df = pd.DataFrame(columns=list(range(period)))
-    elif n_unique_q_deltas == period:
-        # Can't check consistency if this is first one, so just add
-        row = [x[0] for x in unique_q_deltas]
-        q_delta_df.loc[iteration, :] = row
-    else:
-        # If not same number of entries as period, not in loop so reset df
-        q_delta_df = pd.DataFrame(columns=list(range(period)))
-    return q_delta_df
-
-
-def period_convergence_test(q_delta_df, period=7, gamma=0.99):
-    if q_delta_df.shape[0] == period + 1:
-        top_row = q_delta_df.iloc[0, :]
-        discounted_top_row = [x for x in top_row * gamma ** period]
-        bottom_row = [x for x in q_delta_df.iloc[-1, :]]
-        return np.allclose(discounted_top_row, bottom_row, rtol=5)
-    else:
-        return False
+    return (max_period_diff - min_period_diff) < epsilon * min_period_diff
 
 
 @hydra.main(config_path="conf", config_name="config")
@@ -196,10 +163,15 @@ def main(cfg):
             a, cfg.shelf_life_at_arrival_dist
         )
 
+    # Roll demand so that, for example, action at end of Monday followed by Tues demand
+    max_demands = np.roll(cfg.max_demands, -1)
+    min_demands = np.roll(cfg.min_demands, -1)
+    mean_demands = np.roll(cfg.mean_demands, -1)
+
     demand_df_dict = {}
     for i in range(len(weekdays)):
         demand_df_dict[i] = get_demand_df(
-            cfg.min_demands[i], cfg.max_demands[i], cfg.mean_demands[i]
+            min_demands[i], max_demands[i], mean_demands[i]
         )
 
     max_stock_rem_age_1 = np.ceil(
@@ -226,6 +198,17 @@ def main(cfg):
     if cfg.save_qvalues_each_iteration:
         iteration_qvalues_path = Path("iteration_qvalues/")
         iteration_qvalues_path.mkdir(parents=True, exist_ok=True)
+
+    # For now, only do periodic convergence test
+    # for undiscounted case and if saving qvalues each iteration
+    conv_test_periodic = cfg.convergence_test.periodic
+    if conv_test_periodic:
+        assert (
+            cfg.gamma == 1
+        ), "Periodic convergence test currently only implement for undiscounted case"
+        assert (
+            cfg.save_qvalues_each_iteration
+        ), "Peridic convergence test requires saving Q-values each iteration"
 
     # Run Q-iteration
     period = len(cfg.mean_demands)
@@ -261,17 +244,27 @@ def main(cfg):
                 f"iteration {i} done, max diff {q_max_abs_diff}, % actions changed {prop_actions_change}"
             )
 
-            # New convergence check based on cycle
-            unique_q_deltas = calculate_unique_q_deltas(q_values, q_values_old)
-            q_delta_df = update_q_delta_df(
-                q_delta_df, unique_q_deltas, iteration=i, period=period, gamma=cfg.gamma
-            )
-            conv_test = period_convergence_test(
-                q_delta_df, period=period, gamma=cfg.gamma
-            )
+            # Periodic covergence test
+            if (i >= period) and (cfg.convergence_test.periodic):
+
+                conv_test = period_convergence_test(
+                    q_values,
+                    i,
+                    period,
+                    cfg.convergence_test.epsilon,
+                    iteration_qvalues_path,
+                )
+
+            # If not using period convergence test, then just look at biggest change in a q-value
+            else:
+                conv_test = q_max_abs_diff < (
+                    cfg.convergence_test.epsilon * q_values.min().min()
+                )
+
             if conv_test:
                 log.info(f"Period convergence test met on iteration {i}")
                 break
+
             # If flag is True, save the q_values at the end of each iteration
             if cfg.save_qvalues_each_iteration:
                 p = iteration_qvalues_path / f"q_values_{i}.pkl"

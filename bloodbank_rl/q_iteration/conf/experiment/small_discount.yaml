@@ -1,0 +1,7 @@
+# @package _global_
+
+gamma: 0.99
+max_iterations: 200
+convergence_test:
+  periodic: False
+  epsilon: 0.005

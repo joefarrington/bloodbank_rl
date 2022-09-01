@@ -1,0 +1,3 @@
+# @package _global_
+
+mean_demands:  [2.3, 2.3, 2.5, 2.4, 2.5, 1.7, 1.8] # MTWTFSS
