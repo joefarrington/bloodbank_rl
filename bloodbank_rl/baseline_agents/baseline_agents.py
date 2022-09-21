@@ -1,18 +1,9 @@
 import numpy as np
-from scipy.stats import mode, poisson, norm
 import torch
 import tianshou as ts
 
-# We want a general agent class that we can then subclass to create agents that will take
-# steps using different heuristics
-
-# Might be nice to have a way to specify the additional information we want to collect
-# separately - maybe we just log everything in the info dict that comes back?
-
 # The specific agents (e.g. sS) assume an environment where the first element of the observation
-# is the weekday and the rest are the inventory.
-#  Might want to tweak this to make it a bit more flexible because it's just hard-coded
-# at the moment.
+# is the weekday and the rest are the inventory - this is hardcoded.
 
 
 class Agent:
@@ -68,19 +59,6 @@ class Agent_sS(Agent):
             return S_high - inventory
         else:
             return 0
-
-
-class Agent_S(Agent):
-    def __init__(self, S_high_parameters, env, seed):
-        super().__init__(env, seed)
-        self.S_high_parameters = S_high_parameters
-
-    def _select_action(self):
-        # Observation has weekday as first element, rest is inventory
-        weekday = int(self.state[0])
-        inventory = np.sum(self.state[1:])
-        S_high = self.S_high_parameters[weekday]
-        return max(S_high - inventory, 0)
 
 
 class Agent_sQ(Agent):
@@ -168,19 +146,6 @@ class Agent_sSbQ(Agent):
             return 0
 
 
-# Agent that takes a StableBaselines3 model
-# Use for evaluation after training that is
-# compatible with other methods
-class SBAgent(Agent):
-    def __init__(self, model, env, seed):
-        super().__init__(env, seed)
-        self.model = model
-
-    def _select_action(self):
-        action, _states = self.model.predict(self.state, deterministic=True)
-        return action
-
-
 # Agent that takes a Tianshou policy
 # Use for evaluation after training
 # in a way compatible with other models
@@ -204,63 +169,7 @@ class TSAgent(Agent):
         return action
 
 
-# For now, we assume one value per weekday
-# and that Poisson distributed
-# TODO: pull these from the env
-# rather than providing and argument here
-class Agent_servicelevel(Agent):
-    def __init__(self, mean_daily_demands, minimum_service_level, env, seed):
-        super().__init__(env, seed)
-
-        # Mean daily demands are M,T,W,T,F,S,S
-        # Need to rearrange, so order-up-to on
-        # Sunday based on Monday demand
-        next_day_mean_demand = np.roll(mean_daily_demands, -1)
-
-        # Calculate order up to level based on PPF on next day's demand distribution
-        # Convert to int as expected by action space of env
-        self.S_high_parameters = poisson.ppf(
-            minimum_service_level, next_day_mean_demand
-        ).astype(int)
-
-    def _select_action(self):
-        # Observation has weekday as first element, rest as inventory
-        weekday = int(self.state[0])
-        inventory = np.sum(self.state[1:])
-        S_high = self.S_high_parameters[weekday]
-
-        return max(S_high - inventory, 0)
-
-
-class Agent_servicelevelNormal(Agent):
-    def __init__(
-        self, mean_daily_demands, std_daily_demands, minimum_service_level, env, seed,
-    ):
-        super().__init__(env, seed)
-
-        # Mean daily demands are M,T,W,T,F,S,S
-        # Need to rearrange, so order-up-to on
-        # Sunday based on Monday demand
-        next_day_mean_demand = np.roll(mean_daily_demands, -1)
-        next_day_std_demand = np.roll(std_daily_demands, -1)
-
-        # Calculate order up to level based on PPF on next day's demand distribution
-        # Take the ceiling when generating from continuous distribution
-        # CRound  as expected by action space of env
-        self.S_high_parameters = np.ceil(
-            norm.ppf(minimum_service_level, next_day_mean_demand, next_day_std_demand,)
-        ).astype(int)
-        print(self.S_high_parameters)
-
-    def _select_action(self):
-        # Observation has weekday as first element, rest as inventory
-        weekday = int(self.state[0])
-        inventory = np.sum(self.state[1:])
-        S_high = self.S_high_parameters[weekday]
-
-        return max(S_high - inventory, 0)
-
-
+# Agent that takes in a lookup table, e.g. from the output of value iteration
 class Agent_lookuptable(Agent):
     def __init__(self, best_action_dict, env, seed):
         super().__init__(env, seed)
