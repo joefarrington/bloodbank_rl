@@ -1,19 +1,5 @@
-# TODO observation space should distinguish in some way between inventory slots, day of the week and (when added) hospital
-# information. This can be achieved using gym.spaces.Tuple and setting the constraints for each individually.
-# TODO: add in ability to consider multiple products, e.g. units of different blood types and have order
-# of preference for allocation
-# TODO: mis-match costs if using multiple types
-# TODO: checking of arguments for legality
-
-# This is simplified version that doesn't use SimPy because it's not need for what we're doing right now.
-# Demand is Poisson with mean demand for each weekday
-
-# Default parameters based on 'Stochastic inventory model for minimizing blood shortage and outdating in a blood supply chain under supply and demand uncertainty'
-# by Shih and Rajendran (2020)
-
 import numpy as np
 import pandas as pd
-from collections import namedtuple, Counter
 import gym
 import math
 from pathlib import Path
@@ -315,12 +301,13 @@ class SimpleProvider:
         pass
 
 
+# Default parameters based on Hybrid ordering policies for platelet inventory management under demand uncertainty, Rajendran & Srinivas (2020)
 class PoissonDemandProviderSR:
     def __init__(
         self,
         mean_daily_demands=[37.5, 37.3, 39.2, 37.8, 40.5, 27.2, 28.4],
         sim_duration=365,
-        initial_weekday=6,
+        initial_weekday=6,  # First obervation Sunday evening
         seed=None,
         one_hot_encode_weekday=False,
     ):
@@ -423,9 +410,7 @@ class DFDemandProvider:
         return [seed_value]
 
     def get_initial_stock(self, max_age, transit_time):
-        # Initial stock is supposed to be a parameter
-        # Need to check exactly what it should be
-        # For now, just assume no stock
+        # Assume no stock
 
         inventory = np.zeros((max_age))
 
@@ -523,16 +508,13 @@ class DFPyomoDemandProvider:
             return initial_index
 
     def get_initial_stock(self, max_age, transit_time):
-        # Initial stock is supposed to be a parameter
-        # Need to check exactly what it should be
-        # For now, just assume no stock
-        # Note that this isn't used in Pyomo modelling,
-        # where initial inventory set elsewhere
+        # When using with Pyomo, initial stock will be set as parameter of
+        # optimization problem, so raise NotImplementedError if code tries
+        # to get it from the demand provider
 
-        inventory = np.zeros((max_age))
-
-        in_transit = [0] * transit_time
-        return inventory, in_transit
+        raise NotImplementedError(
+            "Initial stock should be provided as parameter as part of Pyomo set-up, not obtained from demand provider"
+        )
 
     def generate_demand(self):
         self.current_index += 1
@@ -543,183 +525,6 @@ class DFPyomoDemandProvider:
 
     def reset(self):
         self.current_index = self.initial_index
-
-
-# We can use this to change the coefficient of variation.
-# But it can only do an overdispersed Poisson so min cv is
-# say 0.2, so we can't currently do the setting where CV is 0.1
-# as reported in the paper
-
-
-class NegBinDemandProviderSR:
-    def __init__(
-        self,
-        mean_daily_demands=[37.5, 37.3, 39.2, 37.8, 40.5, 27.2, 28.4],
-        cv=0.2,
-        sim_duration=365,
-        seed=None,
-    ):
-
-        self.mean_daily_demands = np.array(mean_daily_demands)
-        self.cv = cv
-        self.sim_duration = sim_duration
-
-        # Based on the means and CV, calculate the std dev and
-        # then p and n to parameterise the numpy negative binomial dist
-        self.daily_stddev = self._calculate_daily_stddev(
-            self.mean_daily_demands, self.cv
-        )
-        self.daily_nb_p = self._calculate_daily_nb_p(
-            self.mean_daily_demands, self.daily_stddev
-        )
-        self.daily_nb_n = self._calculate_daily_nb_n(
-            self.mean_daily_demands, self.daily_stddev
-        )
-
-        # Set random seed and store value for potential future logging
-        self.seed_value = self.seed(seed)
-
-        # need to provide the weekday as state
-        self.additional_observation_dim = 1
-
-    def seed(self, seed=None):
-
-        self.np_rng = np.random.default_rng(seed)
-        seed_value = self.np_rng.bit_generator._seed_seq.entropy
-
-        return [seed_value]
-
-    def get_initial_stock(self, max_age, transit_time):
-        # Initial stock is supposed to be a parameter
-        # Need to check exactly what it should be
-        # For now, just assume no stock
-
-        inventory = np.zeros((max_age))
-
-        in_transit = [0] * transit_time
-
-        return inventory, in_transit
-
-    def generate_demand(self):
-        # Update the weekday - moving to morning after observation
-        self.weekday = (self.weekday + 1) % 7
-
-        demand = self.np_rng.negative_binomial(
-            self.daily_nb_n[self.weekday], self.daily_nb_p[self.weekday]
-        )
-
-        return demand
-
-    def additional_observation(self):
-        # Return the weekday
-        return [self.weekday]
-
-    def reset(self):
-        # Initial state is Sunday
-        self.weekday = 6
-
-    def _calculate_daily_stddev(self, mean_daily_demands, cv):
-        return mean_daily_demands * cv
-
-    def _calculate_daily_nb_p(self, mean_daily_demands, daily_stddev):
-        p = (mean_daily_demands) / daily_stddev ** 2
-        return p
-
-    def _calculate_daily_nb_n(self, mean_daily_demands, daily_stddev):
-        n = (mean_daily_demands ** 2) / (daily_stddev ** 2 - mean_daily_demands)
-        return n
-
-
-# This differ slightly, demand is generated one day ahead and stored so that it can be used to
-# calculate a dummy forecast. Should end up with the same demand sequence if the rngs are
-# set up correctly.
-
-# Need to be a little bit careful, because this calls the RNG as part of reset, if we instantiate
-# the env, which calls reset, and then manually reset, rng is 'one ahead' of same seeded value
-# for normal Poisson demand provider so don;t get the same demand trajectory.
-# Either don't mnaully reset at the start, or remove reset statement from init of the env
-# But don't want to be doing both
-
-
-class PoissonDemandProviderWithForecastSR:
-    def __init__(
-        self,
-        mean_daily_demands=[37.5, 37.3, 39.2, 37.8, 40.5, 27.2, 28.4],
-        sim_duration=365,
-        seed=None,
-    ):
-        self.mean_daily_demands = mean_daily_demands
-        self.sim_duration = sim_duration
-
-        # Set random seed and store value for potential future logging
-        self.seed_value = self.seed(seed)
-
-        # need to provide the weekday as state
-        # and also the forecast
-        self.additional_observation_dim = 2
-
-    def seed(self, seed=None):
-
-        self.np_rng = np.random.default_rng(seed)
-        seed_value = self.np_rng.bit_generator._seed_seq.entropy
-        # Have an extra rng for the forecast noise, so
-        # should get same demands using same seed for comparison
-        self.np_rng_forecast_noise = np.random.default_rng(seed)
-        forecast_seed_value = self.np_rng_forecast_noise.bit_generator._seed_seq.entropy
-
-        return [seed_value, forecast_seed_value]
-
-    def get_initial_stock(self, max_age, transit_time):
-        # Initial stock is supposed to be a parameter
-        # Need to check exactly what it should be
-        # For now, just assume no stock
-
-        inventory = np.zeros((max_age))
-
-        in_transit = [0] * transit_time
-
-        return inventory, in_transit
-
-    def generate_demand(self):
-        # Update the weekday - moving to morning after observation
-        self.weekday = (self.weekday + 1) % 7
-
-        # We will have generated and stored today's demand yesterday
-        # so just store and then return
-        demand = self.next_day_demand
-
-        # Generate demand and forecast for the next day
-        self.next_day_demand = self._generate_next_day_demand()
-        self.next_day_forecast = self._generate_next_day_forecast()
-
-        return demand
-
-    def _generate_next_day_demand(self):
-        next_weekday = (self.weekday + 1) % 7
-        next_day_demand = self.np_rng.poisson(self.mean_daily_demands[next_weekday])
-        return next_day_demand
-
-    def _generate_next_day_forecast(self):
-        # For now, generate forecast by just adding some noise to true demand
-        # noise = self.np_rng_forecast_noise.choice([-4, -3, -2, -1, 0, 1, 2, 3, 4])
-
-        # What happens with a perfect forecast?
-        noise = 0
-
-        return self.next_day_demand + noise
-
-    def additional_observation(self):
-        # Return the weekday
-        return [self.weekday, self.next_day_forecast]
-
-    def reset(self):
-        # Initial state is Sunday
-        self.weekday = 6
-
-        # Generate the next day's demand and the forecast
-        # based on it to include in the state
-        self.next_day_demand = self._generate_next_day_demand()
-        self.next_day_forecast = self._generate_next_day_forecast()
 
 
 # This is a lightweight wrapper around the PoissonDemandProvider
@@ -828,9 +633,7 @@ class NormalDemandProviderSR:
         return [seed_value]
 
     def get_initial_stock(self, max_age, transit_time):
-        # Initial stock is supposed to be a parameter
-        # Need to check exactly what it should be
-        # For now, just assume no stock
+        # Assume no stock
 
         inventory = np.zeros((max_age))
 
