@@ -1919,6 +1919,23 @@ numpy = "*"
 typing-extensions = "*"
 
 [[package]]
+name = "torch-tb-profiler"
+version = "0.2.1"
+description = "PyTorch Profiler TensorBoard Plugin"
+category = "main"
+optional = false
+python-versions = ">=3.6.2"
+
+[package.dependencies]
+pandas = ">=1.0.0"
+tensorboard = ">=1.15,<2.1.0 || >2.1.0"
+
+[package.extras]
+blob = ["azure-storage-blob"]
+gs = ["google-cloud-storage"]
+s3 = ["boto3"]
+
+[[package]]
 name = "torchvision"
 version = "0.8.2"
 description = "image and video datasets and models for torch deep learning"
@@ -2074,7 +2091,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "67a8ad4a887a035cb9b3eb41781922facdfc872c01e252f207606b9e070b19da"
+content-hash = "df213d099bedf27d9c3d098c15618683db99800d7a7b9ffa72cbf79e8fdeabdb"
 
 [metadata.files]
 absl-py = [
@@ -3416,6 +3433,10 @@ torch = [
     {file = "torch-1.7.1-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:a3793dcceb12b1e2281290cca1277c5ce86ddfd5bf044f654285a4d69057aea7"},
     {file = "torch-1.7.1-cp39-cp39-win_amd64.whl", hash = "sha256:6652a767a0572ae0feb74ad128758e507afd3b8396b6e7f147e438ba8d4c6f63"},
     {file = "torch-1.7.1-cp39-none-macosx_10_9_x86_64.whl", hash = "sha256:38d67f4fb189a92a977b2c0a38e4f6dd413e0bf55aa6d40004696df7e40a71ff"},
+]
+torch-tb-profiler = [
+    {file = "torch_tb_profiler-0.2.1-py3-none-any.whl", hash = "sha256:747bff07237dca715ccb0e49779fd7228167b4610e90da6296c7dd4cb5c96398"},
+    {file = "torch_tb_profiler-0.2.1.tar.gz", hash = "sha256:5db81716203d6a3cad3fff199fd01ddab2365339ff912381640bacbe90ed9259"},
 ]
 torchvision = [
     {file = "torchvision-0.8.2-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:86fae370d222f76ad57c57c3bee03f78b8db727743bfb4c1559a3d395159cea8"},
