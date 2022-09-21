@@ -244,8 +244,6 @@ class PyomoModelRunner:
             self.results_of_checks_list.append(out_df)
 
     ### Functions for checking the output is consistent with constraints ###
-    # TODO: Could run a check that policy params same in each scenario
-
     def _determine_checks_to_perform(self):
         checks_to_run = [
             self._check_wastage,
