@@ -1,0 +1,11 @@
+# @package _global_
+
+model_constructor: sQ_PyomoModelConstructor
+model_constructor_params:
+  weekly_policy: True
+  M: 90
+n_scenarios: 20
+solver_options:
+  TimeLimit: 129600
+  MIPFocus: 1
+log_folder_name: sQ_simulated

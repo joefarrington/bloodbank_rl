@@ -1,0 +1,15 @@
+# @package _global_
+
+model_constructor: sSbQ_PyomoModelConstructor
+model_constructor_params:
+  weekly_policy: True
+  initial_inventory:
+    2: 25
+demand_provider: DFPyomoDemandProvider
+demand_provider_kwargs: 2015_2016_real_demand
+scenario_name_start: 0
+n_scenarios: 20
+solver_options:
+  TimeLimit: 129600
+  MIPFocus: 1
+log_folder_name: sSbQ_real
