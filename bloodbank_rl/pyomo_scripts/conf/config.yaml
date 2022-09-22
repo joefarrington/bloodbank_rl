@@ -17,7 +17,7 @@ model_constructor_params:
   wastage_cost: 650
   M: 100
   additional_fifo_constraints: True
-  weekly_policy: False
+  weekly_policy: True
 demand_provider: PoissonDemandProviderSR
 scenario_name_start: 311
 solver_string: gurobi_persistent
