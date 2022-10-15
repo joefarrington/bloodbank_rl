@@ -1,6 +1,6 @@
 #! /bin/bash -l
 
-#$ -N pyomo_stochastic_sQ
+#$ -N pyomo_stochastic_sS
 #$ -l h_rt=38:00:00
 #$ -l mem=4G
 #$ -pe smp 8
