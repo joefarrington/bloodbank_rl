@@ -6,6 +6,9 @@ import pickle
 import functools
 from pathlib import Path
 import logging
+from jax.config import config
+
+config.update("jax_enable_x64", True)
 
 from omegaconf import DictConfig, OmegaConf
 import hydra
@@ -173,6 +176,7 @@ def period_convergence_test(
     min_period_diff = jnp.abs(q_values - q_values_period_start.values).min().min()
     print(f"max_period_diff: {max_period_diff}")
     print(f"min_period_diff: {min_period_diff}")
+    print(f"delta_period_diff: {max_period_diff - min_period_diff}")
 
     return (max_period_diff - min_period_diff) < epsilon * min_period_diff
 
@@ -215,12 +219,15 @@ def main(cfg):
     state_tuples = [
         (i, j, k)
         for i in weekdays.keys()
-        for j in range(0, max_stock_rem_age_1 + 1)
-        for k in range(0, max_stock_rem_age_2 + 1)
+        for j in range(0, 2 * cfg.max_order + 1)
+        for k in range(0, cfg.max_order + 1)
     ]
 
+    batch_size = cfg.batch_size
+    n_batches = int(np.ceil(len(state_tuples) / batch_size))
+
     state_to_idx = np.zeros(
-        (len(weekdays.keys()), max_stock_rem_age_1 + 1, max_stock_rem_age_2 + 1)
+        (len(weekdays.keys()), 2 * cfg.max_order + 1, cfg.max_order + 1,)
     )
     for idx, state in enumerate(state_tuples):
         state_to_idx[state] = idx
@@ -251,18 +258,12 @@ def main(cfg):
     period = len(cfg.mean_demands)
     q_delta_df = pd.DataFrame(columns=list(range(period)))
 
-    # With normal problem, got memory error
-    # This is a hack, combined with the jnp.vstack
-    # TODO: A more principled way of doing this
-    s_1 = states[:13000, :]
-    s_2 = states[13000:, :]
-
     for i in range(cfg.max_iterations):
         q_values_old = q_values.copy()
         q_values = jnp.vstack(
             [
                 update_q_vmap_states_actions(
-                    s,
+                    states[batch_size * b : batch_size * (b + 1)],
                     actions,
                     q_values_old,
                     cost_dict,
@@ -272,7 +273,7 @@ def main(cfg):
                     cfg.gamma,
                     state_to_idx,
                 )
-                for s in [s_1, s_2]
+                for b in range(n_batches)
             ]
         )
 
