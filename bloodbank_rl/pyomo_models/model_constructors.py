@@ -1,5 +1,4 @@
 import pyomo.environ as pyo
-import numpy as np
 
 
 class PyomoModelConstructor:
@@ -17,20 +16,9 @@ class PyomoModelConstructor:
         M=100,
         additional_fifo_constraints=True,
         weekly_policy=False,
-        shelf_life_at_arrival_dist=[0, 0, 1],
     ):
 
         self.model = pyo.ConcreteModel()
-
-        # Check that `shelf_life_at_arrival_dist` sums to 1 and had right
-        # number of elements
-        assert (
-            len(shelf_life_at_arrival_dist) == a_max
-        ), "`shelf_life_at_arrival_dist` must have number of elements equal to `a_max`"
-        assert (
-            np.sum(shelf_life_at_arrival_dist) == 1
-        ), "`shelf_life_at_arrival_dist` must sum to 1"
-        self.shelf_life_at_arrival_dist = shelf_life_at_arrival_dist
 
         self.model.T = pyo.RangeSet(1, t_max)
         self.model.A = pyo.RangeSet(1, a_max)
@@ -161,31 +149,10 @@ class PyomoModelConstructor:
                 )
 
         # For the baseline setting, all inventory should have three useful days of live when received
-        # This works fine for the baseline setting, but we do currently get some rounding issues when
-        # moving away from it.
         for t in self.model.T:
             for a in self.model.A:
-                if t == 1:
-                    pass  # covered in constraint above
-                elif self.shelf_life_at_arrival_dist[a - 1] == 0:
+                if a != self.model.A[-1]:
                     self.model.cons.add(self.model.X[t, a] == 0)
-                else:
-                    self.model.cons.add(
-                        self.model.X[t, a]
-                        >= (
-                            self.model.OQ[t - 1]
-                            * self.shelf_life_at_arrival_dist[a - 1]
-                        )
-                        - 0.5
-                    )
-                    self.model.cons.add(
-                        self.model.X[t, a]
-                        <= (
-                            self.model.OQ[t - 1]
-                            * self.shelf_life_at_arrival_dist[a - 1]
-                        )
-                        + 0.5
-                    )
 
         # Equations 7 and 8:
         for t in self.model.T:
@@ -861,3 +828,80 @@ class sSbQ_PyomoModelConstructor(PyomoModelConstructor):
     @staticmethod
     def policy_parameters():
         return ["s", "S", "beta", "Q"]
+
+
+# Classic base-stock policy, but with one parameter per weekday
+class S_PyomoModelConstructor(PyomoModelConstructor):
+    def _add_specific_variables(self):
+
+        self.model.S = pyo.Var(self.model.T, domain=pyo.NonNegativeReals)
+
+    def _add_specific_constraints(self):
+
+        # Equation 10
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                <= (self.model.S[t] - 1) + self.model.M * (1 - self.model.Delta[t])
+            )
+
+        # Equation 11
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t] >= self.model.S[t] - self.model.M * self.model.Delta[t]
+            )
+
+        # Equation B-2
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.OQ[t]
+                <= (self.model.S[t] - self.model.IP[t])
+                + self.model.M * (1 - self.model.Delta[t])
+            )
+            # Equation B-3
+            self.model.cons.add(
+                self.model.OQ[t]
+                >= (self.model.S[t] - self.model.IP[t])
+                - self.model.M * (1 - self.model.Delta[t])
+            )
+            # Equation B-4
+            self.model.cons.add(self.model.OQ[t] <= self.model.M * self.model.Delta[t])
+
+    def _add_specific_variables_weekly(self):
+        self.model.S = pyo.Var(self.model.Wd, domain=pyo.NonNegativeReals)
+
+    def _add_specific_constraints_weekly(self):
+        # Equation 10
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                <= (self.model.S[(t - 1) % 7] - 1)
+                + self.model.M * (1 - self.model.Delta[t])
+            )
+
+        # Equation 11
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.IP[t]
+                >= self.model.S[(t - 1) % 7] - self.model.M * self.model.Delta[t]
+            )
+
+        # Equation B-2
+        for t in self.model.T:
+            self.model.cons.add(
+                self.model.OQ[t]
+                <= (self.model.S[(t - 1) % 7] - self.model.IP[t])
+                + self.model.M * (1 - self.model.Delta[t])
+            )
+            # Equation B-3
+            self.model.cons.add(
+                self.model.OQ[t]
+                >= (self.model.S[(t - 1) % 7] - self.model.IP[t])
+                - self.model.M * (1 - self.model.Delta[t])
+            )
+            # Equation B-4
+            self.model.cons.add(self.model.OQ[t] <= self.model.M * self.model.Delta[t])
+
+    @staticmethod
+    def policy_parameters():
+        return ["S"]
