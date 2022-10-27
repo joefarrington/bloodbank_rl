@@ -149,15 +149,27 @@ class PyomoModelRunner:
                 for t in model.T
             ]
 
-            # Add policy paramters to results
+            # Add policy parameters to results disctionaries for each scenario
+            # And record them in a separate output file that can be read back in
+            # for evaluation
+            if self.model_constructor_params["weekly_policy"]:
+                param_dict = {t: {} for t in model.W}
+            else:
+                param_dict = {t: {} for t in model.T}
+
             for res_dict, t in zip(res_dicts, model.T):
                 for param in self.model_constructor.policy_parameters():
                     if self.model_constructor_params["weekly_policy"]:
                         param_string = f"model.{param}[(t-1) % 7]()"
+                        param_dict[(t - 1) % 7][f"{param}"] = round(
+                            eval(param_string), 0
+                        )
                     else:
                         param_string = f"model.{param}[t]()"
+                        param_dict[t][f"{param}"] = round(eval(param_string), 0)
                     res_dict[f"{param}"] = round(eval(param_string), 0)
 
+            self.param_df = pd.DataFrame(param_dict)
             self.results_list.append(pd.DataFrame(res_dicts))
 
             # Record the costs for each scenario and store in a single Pandas DataFrame
@@ -195,6 +207,9 @@ class PyomoModelRunner:
 
         filename = Path(directory_path_string) / f"all_costs.csv"
         self.costs_df.to_csv(filename)
+
+        filename = Path(directory_path_string) / f"policy_parameters.csv"
+        self.param_df.to_csv(filename)
 
     def check_outputs(self, directory_path_string):
         self.results_of_checks_list = []
