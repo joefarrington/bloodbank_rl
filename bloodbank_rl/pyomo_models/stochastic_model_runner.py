@@ -84,8 +84,6 @@ class PyomoModelRunner:
             return [model.s, model.S, model.alpha, model.Q]
         elif self.model_constructor.policy_parameters() == ["s", "S", "beta", "Q"]:
             return [model.s, model.S, model.beta, model.Q]
-        elif self.model_constructor.policy_parameters() == ["S"]:
-            return [model.S]
         else:
             raise ValueError("Policy parameters not recognised")
 
