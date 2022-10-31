@@ -153,23 +153,21 @@ class PyomoModelRunner:
             # And record them in a separate output file that can be read back in
             # for evaluation
             if self.model_constructor_params["weekly_policy"]:
-                param_dict = {t: {} for t in model.W}
+                param_dict = {t: {} for t in model.Wd}
             else:
                 param_dict = {t: {} for t in model.T}
 
             for res_dict, t in zip(res_dicts, model.T):
                 for param in self.model_constructor.policy_parameters():
                     if self.model_constructor_params["weekly_policy"]:
-                        param_string = f"model.{param}[(t-1) % 7]()"
-                        param_dict[(t - 1) % 7][f"{param}"] = round(
-                            eval(param_string), 0
-                        )
+                        param_value = round(eval(f"model.{param}[(t-1) % 7]()"),0)
+                        param_dict[(t - 1) % 7][f"{param}"] = param_value
                     else:
-                        param_string = f"model.{param}[t]()"
-                        param_dict[t][f"{param}"] = round(eval(param_string), 0)
-                    res_dict[f"{param}"] = round(eval(param_string), 0)
+                        param_value= round(eval(f"model.{param}[t]()"),0)
+                        param_dict[t][f"{param}"] = param_value
+                    res_dict[f"{param}"] = param_value
 
-            self.param_df = pd.DataFrame(param_dict)
+            self.param_df = pd.DataFrame(param_dict).transpose()
             self.results_list.append(pd.DataFrame(res_dicts))
 
             # Record the costs for each scenario and store in a single Pandas DataFrame
