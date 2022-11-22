@@ -4,9 +4,14 @@ model_constructor: sS_PyomoModelConstructor
 model_constructor_params:
   weekly_policy: True
   initial_inventory:
-    2: 25
+    '2': 25
 demand_provider: DFPyomoDemandProvider
-demand_provider_kwargs: 2015_2016_real_demand
+demand_provider_kwargs:
+  filename: ../../../../../data/processed/20211028_2015_2016_plt_demand_for_pyomo.csv
+  demand_col_name: demand
+  weekday_col_name: weekday
+  sim_start_weekday: 0
+  sim_duration: 30
 scenario_name_start: 0
 n_scenarios: 20
 solver_options:
