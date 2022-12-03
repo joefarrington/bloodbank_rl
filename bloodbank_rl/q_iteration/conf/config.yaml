@@ -14,4 +14,5 @@ max_iterations: 20
 convergence_test:
   periodic: True
   epsilon: 0.005
+batch_size: 13000
 save_qvalues_each_iteration: True

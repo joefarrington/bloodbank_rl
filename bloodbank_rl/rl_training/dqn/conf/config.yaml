@@ -52,7 +52,7 @@ trainer:
   step_per_epoch: 10000
   step_per_collect: 1
   update_per_step: 1
-  episode_per_test: 20
+  episode_per_test: 100
   batch_size: 64
   verbose: False
 exploration:
