@@ -118,8 +118,8 @@ class PlateletBankGym(gym.Env):
         self.action_space.seed(self.seed_value[0])
 
         # Observation space is slots for (max_inv_slots - 1) lots of inventory
-        # and then additional slots that may be supplier by the demand provider
-        # TODO: This could be more precise about min and max for different elements of obs
+        # and then additional slots that may be supplied by the demand provider
+
         if self.stock_age_in_state:
             obs_dim = (
                 self.max_inv_slots - 1 + self.demand_provider.additional_observation_dim
@@ -129,6 +129,8 @@ class PlateletBankGym(gym.Env):
                 1 if self.lead_time == 0 else 2
             )  # Will only observe stock in transit if lead time > 0
             obs_dim = obs_inv_dim + self.demand_provider.additional_observation_dim
+
+        # This could be more precise about min and max for different elements of obs, but for now leave flexible
         self.observation_space = gym.spaces.Box(low=0, high=500, shape=(obs_dim,))
 
     def step(self, action):
@@ -278,9 +280,7 @@ class SimpleProvider:
         self.reset()
 
     def get_initial_stock(self, max_age, transit_time):
-        # Initial stock is supposed to be a parameter
-        # Need to check exactly what it should be
-        # For now, just assume no stock
+        # No stock by default
 
         inventory = np.zeros((max_age))
 
@@ -335,9 +335,7 @@ class PoissonDemandProviderSR:
         return [seed_value]
 
     def get_initial_stock(self, max_age, transit_time):
-        # Initial stock is supposed to be a parameter
-        # Need to check exactly what it should be
-        # For now, just assume no stock
+        # No stock by default
 
         inventory = np.zeros((max_age))
 
@@ -410,7 +408,7 @@ class DFDemandProvider:
         return [seed_value]
 
     def get_initial_stock(self, max_age, transit_time):
-        # Assume no stock
+        # No stock by default
 
         inventory = np.zeros((max_age))
 
@@ -633,7 +631,7 @@ class NormalDemandProviderSR:
         return [seed_value]
 
     def get_initial_stock(self, max_age, transit_time):
-        # Assume no stock
+        # No stock by default
 
         inventory = np.zeros((max_age))
 
