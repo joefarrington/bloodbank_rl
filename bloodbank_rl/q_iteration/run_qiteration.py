@@ -156,6 +156,7 @@ def period_convergence_test(
 @hydra.main(config_path="conf", config_name="config")
 def main(cfg):
 
+    log.info("Starting setup")
     #  Setup
     age_at_arrival_dict = {}
     for a in range(0, cfg.max_order + 1):
@@ -214,6 +215,8 @@ def main(cfg):
     period = len(cfg.mean_demands)
     q_delta_df = pd.DataFrame(columns=list(range(period)))
 
+    log.info("Setup complete, starting Q-value iteration")
+    
     with Parallel(n_jobs=-1) as parallel:
         for i in range(cfg.max_iterations):
             q_values_old = q_values.copy()
@@ -290,6 +293,8 @@ def main(cfg):
 
     with open("q_values.pkl", "wb") as fp:
         pickle.dump(q_values, fp)
+
+    log.info("Policy extracted and saved.")
 
 
 if __name__ == "__main__":
